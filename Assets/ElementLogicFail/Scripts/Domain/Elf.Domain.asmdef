@@ -1,3 +1,4 @@
 {
-	"name": "Elf.Domain"
+	"name": "Elf.Domain",
+	"references":[ "GUID:ac88e0386a85820499113b11a72f611f" ]
 }
