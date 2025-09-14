@@ -19,8 +19,6 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
                 ElementPrefab = prefabEntity
             });
             
-            AddComponent(entity, LocalTransform.Identity);
-            
             AddComponent(GetEntity(TransformUsageFlags.None), new SpawnControl
             {
                 SpawnRateMultiplier = 1f
