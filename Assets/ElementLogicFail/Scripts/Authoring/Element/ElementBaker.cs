@@ -18,8 +18,6 @@ namespace ElementLogicFail.Scripts.Authoring.Element
                 Target = float3.zero,
                 RandomSeed =  (uint)UnityEngine.Random.Range(1, int.MaxValue)
             });
-            
-            AddComponent(entity, LocalTransform.Identity);
         }
     }
 }
