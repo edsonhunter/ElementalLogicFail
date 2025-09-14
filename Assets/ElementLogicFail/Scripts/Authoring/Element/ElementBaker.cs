@@ -3,13 +3,10 @@ using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Authoring.Element
 {
-    public class ElementBaker : MonoBehaviour
+    public class ElementBaker : Baker<ElementAuthoring>
     {
-        private class ElementBakerBaker : Baker<ElementBaker>
+        public override void Bake(ElementAuthoring authoring)
         {
-            public override void Bake(ElementBaker authoring)
-            {
-            }
         }
     }
 }
