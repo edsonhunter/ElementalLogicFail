@@ -17,8 +17,8 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            float deltaTime = SystemAPI.Time.DeltaTime;
-            float multiplier = SystemAPI.GetSingleton<SpawnControl>().SpawnRateMultiplier;
+            var deltaTime = SystemAPI.Time.DeltaTime;
+            var multiplier = SystemAPI.GetSingleton<SpawnControl>().SpawnRateMultiplier;
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
             foreach (var (spawner, xform) in
