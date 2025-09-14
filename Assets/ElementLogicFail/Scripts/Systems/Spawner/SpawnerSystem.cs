@@ -28,6 +28,7 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 spawnerRW.SpawnRate += deltaTime;
                 if (spawnerRW.SpawnRate >= math.max(0.01f, spawnerRW.SpawnRate * multiplier))
                 {
+                    
                     spawnerRW.SpawnRate = 0f;
                     var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
                     entityCommandBuffer.SetComponent(newInstance, new LocalTransform
