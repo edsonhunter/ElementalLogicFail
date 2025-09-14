@@ -1,4 +1,6 @@
-﻿using ElementLogicFail.Scripts.Components.Spawner;
+﻿using ElementLogicFail.Scripts.Components.Pool;
+using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -12,14 +14,19 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<ElementPoolTag>();
             state.RequireForUpdate<SpawnControl>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var entityManager = state.EntityManager;
             var deltaTime = SystemAPI.Time.DeltaTime;
             var multiplier = SystemAPI.GetSingleton<SpawnControl>().SpawnRateMultiplier;
+            var poolEntity = SystemAPI.GetSingletonEntity<ElementPoolTag>();
+            var poolSpawnBuf = entityManager.GetBuffer<PoolSpawnRequest>(poolEntity);
+            
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
             foreach (var (spawner, xform) in
@@ -29,14 +36,11 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 spawnerRW.SpawnRate += deltaTime;
                 if (spawnerRW.SpawnRate >= math.max(0.01f, spawnerRW.SpawnRate * multiplier))
                 {
-                    
                     spawnerRW.SpawnRate = 0f;
-                    var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
-                    entityCommandBuffer.SetComponent(newInstance, new LocalTransform
+                    poolSpawnBuf.Add(new PoolSpawnRequest
                     {
+                        Type = spawnerRW.Type,
                         Position = xform.ValueRO.Position,
-                        Rotation = xform.ValueRO.Rotation,
-                        Scale = 1f
                     });
                 }
                 spawner.ValueRW = spawnerRW;
