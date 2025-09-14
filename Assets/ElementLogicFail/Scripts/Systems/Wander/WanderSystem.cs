@@ -7,6 +7,7 @@ using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Systems.Wander
 {
+    [BurstCompile]
     public partial struct WanderSystem : ISystem
     {
         [BurstCompile]
