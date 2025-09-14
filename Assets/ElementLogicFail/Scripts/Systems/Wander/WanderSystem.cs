@@ -18,15 +18,15 @@ namespace ElementLogicFail.Scripts.Systems.Wander
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var  deltaTime = SystemAPI.Time.DeltaTime;
+            var deltaTime = SystemAPI.Time.DeltaTime;
             var area = SystemAPI.GetSingleton<WanderArea>();
 
-            foreach (var (element, transform) in SystemAPI.Query<RefRW<ElementData>, RefRO<LocalTransform>>())
+            foreach (var (element, transform) in SystemAPI.Query<RefRW<ElementData>, RefRW<LocalTransform>>())
             {
                 var elementRW = element.ValueRW;
-                var transformRO = transform.ValueRO;
+                var transformRW = transform.ValueRW;
 
-                if (math.distance(transformRO.Position, elementRW.Target) < 0.2f)
+                if (math.distance(transformRW.Position, elementRW.Target) < 0.2f)
                 {
                     var rand = new Unity.Mathematics.Random(elementRW.RandomSeed =
                         elementRW.RandomSeed * 1664525u + 1013904223u);
@@ -34,9 +34,10 @@ namespace ElementLogicFail.Scripts.Systems.Wander
                         rand.NextFloat(area.Min.z, area.Max.z));
                 }
                 
-                float3 direction = math.normalizesafe(elementRW.Target - transformRO.Position);
-                transformRO.Position += direction * elementRW.Speed * deltaTime;
+                float3 direction = math.normalizesafe(elementRW.Target - transformRW.Position);
+                transformRW.Position += direction * elementRW.Speed * deltaTime;
                 element.ValueRW = elementRW;
+                transform.ValueRW = transformRW;
             }
         }
 

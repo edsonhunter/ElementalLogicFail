@@ -127,4 +127,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ElementLogicFail.Scripts.Authoring.Element.ElementAuthoring
   Type: 0
-  speed: 1
+  speed: 2
