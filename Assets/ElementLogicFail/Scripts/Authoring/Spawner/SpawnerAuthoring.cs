@@ -27,6 +27,7 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
                 SpawnRate = authoring.spawnRate,
                 ElementPrefab = prefabEntity
             });
+            
             AddComponent(entity, LocalTransform.Identity);
             
             AddComponent(GetEntity(TransformUsageFlags.None), new SpawnControl
