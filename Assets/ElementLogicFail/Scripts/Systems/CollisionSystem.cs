@@ -1,6 +1,7 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using ElementLogicFail.Scripts.Components.Request;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -19,7 +20,7 @@ namespace ElementLogicFail.Scripts.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _spawnBufferQuery = state.GetEntityQuery(ComponentType.ReadWrite<ElementData>());
+            _spawnBufferQuery = state.GetEntityQuery(ComponentType.ReadWrite<ElementSpawnRequest>());
             state.RequireForUpdate<SimulationSingleton>();
         }
 
@@ -27,7 +28,7 @@ namespace ElementLogicFail.Scripts.Systems
         public void OnUpdate(ref SystemState state)
         {
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
-            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer();
+            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.Temp);
             
             EntityManager entityManager = state.EntityManager;
             Entity spawnBufferEntity = _spawnBufferQuery.GetSingletonEntity();
