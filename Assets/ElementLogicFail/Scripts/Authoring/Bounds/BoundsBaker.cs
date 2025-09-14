@@ -1,7 +1,18 @@
-﻿namespace ElementLogicFail.Scripts.Authoring.Bounds
+﻿using ElementLogicFail.Scripts.Components.Bounds;
+using Unity.Entities;
+
+namespace ElementLogicFail.Scripts.Authoring.Bounds
 {
-    public class BoundsBaker
+    public class BoundsBaker : Baker<BoundsAuthoring>
     {
-        
+        public override void Bake(BoundsAuthoring authoring)
+        {
+            var entity = GetEntity(TransformUsageFlags.None);
+            AddComponent(entity, new WanderArea
+            {
+                Min = authoring.min,
+                Max = authoring.max
+            });
+        }
     }
 }

@@ -5,11 +5,7 @@ namespace ElementLogicFail.Scripts.Authoring.Bounds
 {
     public class BoundsAuthoring : MonoBehaviour
     {
-        private class BoundsAuthoringBaker : Baker<BoundsAuthoring>
-        {
-            public override void Bake(BoundsAuthoring authoring)
-            {
-            }
-        }
+        public Vector3 min = new Vector3(-10f, 0f, -10f);
+        public Vector3 max = new Vector3(10f, 0f, 10f);
     }
 }

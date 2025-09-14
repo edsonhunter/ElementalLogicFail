@@ -1,5 +1,6 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Authoring.Element
@@ -12,8 +13,12 @@ namespace ElementLogicFail.Scripts.Authoring.Element
             AddComponent<ElementTag>(entity);
             AddComponent(entity, new ElementData
             {
-                Type = authoring.Type
+                Type = authoring.Type,
+                Speed = authoring.speed,
+                Target = float3.zero,
+                RandomSeed =  (uint)UnityEngine.Random.Range(1, int.MaxValue)
             });
+            
             AddComponent(entity, LocalTransform.Identity);
         }
     }
