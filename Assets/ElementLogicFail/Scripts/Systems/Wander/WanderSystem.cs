@@ -1,5 +1,9 @@
-﻿using Unity.Burst;
+﻿using ElementLogicFail.Scripts.Components.Bounds;
+using ElementLogicFail.Scripts.Components.Element;
+using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Systems.Wander
 {
@@ -8,13 +12,32 @@ namespace ElementLogicFail.Scripts.Systems.Wander
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            
+            state.RequireForUpdate<WanderArea>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var  deltaTime = SystemAPI.Time.DeltaTime;
+            var area = SystemAPI.GetSingleton<WanderArea>();
 
+            foreach (var (element, transform) in SystemAPI.Query<RefRW<ElementData>, RefRO<LocalTransform>>())
+            {
+                var elementRW = element.ValueRW;
+                var transformRO = transform.ValueRO;
+
+                if (math.distance(transformRO.Position, elementRW.Target) < 0.2f)
+                {
+                    var rand = new Unity.Mathematics.Random(elementRW.RandomSeed =
+                        elementRW.RandomSeed * 1664525u + 1013904223u);
+                    elementRW.Target = new float3(rand.NextFloat(area.Min.x, area.Max.x), 0,
+                        rand.NextFloat(area.Min.z, area.Max.z));
+                }
+                
+                float3 direction = math.normalizesafe(elementRW.Target - transformRO.Position);
+                transformRO.Position += direction * elementRW.Speed * deltaTime;
+                element.ValueRW = elementRW;
+            }
         }
 
         [BurstCompile]
