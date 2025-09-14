@@ -16,12 +16,9 @@ namespace ElementLogicFail.Scripts.Systems
     [UpdateAfter(typeof(PhysicsSimulationGroup))]
     public partial struct CollisionSystem : ISystem
     {
-        private EntityQuery _spawnBufferQuery;
-        
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _spawnBufferQuery = state.GetEntityQuery(ComponentType.ReadWrite<ElementSpawnRequest>());
             state.RequireForUpdate<SimulationSingleton>();
         }
 
@@ -29,7 +26,6 @@ namespace ElementLogicFail.Scripts.Systems
         public void OnUpdate(ref SystemState state)
         {
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
-            Entity spawnBufferEntity = _spawnBufferQuery.GetSingletonEntity();
             
             ComponentLookup<ElementData> lookUpData = SystemAPI.GetComponentLookup<ElementData>(true);
             ComponentLookup<LocalTransform> xformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
