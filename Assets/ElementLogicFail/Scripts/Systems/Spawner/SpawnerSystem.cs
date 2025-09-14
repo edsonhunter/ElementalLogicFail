@@ -12,14 +12,12 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<SpawnControl>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
-            var multiplier = SystemAPI.GetSingleton<SpawnControl>().SpawnRateMultiplier;
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
             foreach (var (spawner, xform) in
@@ -27,9 +25,8 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
             {
                 Components.Spawner.Spawner spawnerRW = spawner.ValueRW;
                 spawnerRW.SpawnRate += deltaTime;
-                if (spawnerRW.SpawnRate >= math.max(0.01f, spawnerRW.SpawnRate * multiplier))
+                if (spawnerRW.SpawnRate >= math.max(0.01f, spawnerRW.SpawnRate))
                 {
-                    
                     spawnerRW.SpawnRate = 0f;
                     var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
                     entityCommandBuffer.SetComponent(newInstance, new LocalTransform
