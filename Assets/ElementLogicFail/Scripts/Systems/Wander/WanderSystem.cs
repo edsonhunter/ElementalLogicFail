@@ -29,10 +29,12 @@ namespace ElementLogicFail.Scripts.Systems.Wander
 
                 if (math.distance(transformRW.Position, elementRW.Target) < 0.2f)
                 {
-                    var rand = new Unity.Mathematics.Random(elementRW.RandomSeed =
-                        elementRW.RandomSeed * 1664525u + 1013904223u);
-                    elementRW.Target = new float3(rand.NextFloat(area.Min.x, area.Max.x), 0,
+                    var rand = new Unity.Mathematics.Random(elementRW.RandomSeed);
+                    elementRW.Target = new float3(
+                        rand.NextFloat(area.Min.x, area.Max.x),
+                        0,
                         rand.NextFloat(area.Min.z, area.Max.z));
+                    elementRW.RandomSeed = rand.NextUInt();
                 }
                 
                 float3 direction = math.normalizesafe(elementRW.Target - transformRW.Position);
