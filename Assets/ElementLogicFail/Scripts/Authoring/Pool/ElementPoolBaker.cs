@@ -14,7 +14,8 @@ namespace ElementLogicFail.Scripts.Authoring.Pool
                 InitialSize = authoring.InitialSize
             });
             AddBuffer<ElementSpawnRequest>(entity);
-            AddComponentObject(entity, authoring.Prefab);
+            var prefabEntity = GetEntity(authoring.Prefab, TransformUsageFlags.Dynamic);
+            AddComponent(prefabEntity, new ElementPrefabReference { Prefab = prefabEntity });
         }
     }
 }

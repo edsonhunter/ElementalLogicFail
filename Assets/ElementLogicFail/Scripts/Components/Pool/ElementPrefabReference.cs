@@ -4,6 +4,6 @@ namespace ElementLogicFail.Scripts.Components.Pool
 {
     public struct ElementPrefabReference : IComponentData
     {
-        
+        public Entity Prefab;
     }
 }
