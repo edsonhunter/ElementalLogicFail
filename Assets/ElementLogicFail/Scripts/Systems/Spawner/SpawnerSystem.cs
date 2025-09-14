@@ -25,7 +25,6 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
             var deltaTime = SystemAPI.Time.DeltaTime;
             var multiplier = SystemAPI.GetSingleton<SpawnControl>().SpawnRateMultiplier;
             var poolEntity = SystemAPI.GetSingletonEntity<ElementPoolTag>();
-            var poolSpawnBuf = entityManager.GetBuffer<PoolSpawnRequest>(poolEntity);
             
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
@@ -37,10 +36,12 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 if (spawnerRW.SpawnRate >= math.max(0.01f, spawnerRW.SpawnRate * multiplier))
                 {
                     spawnerRW.SpawnRate = 0f;
-                    poolSpawnBuf.Add(new PoolSpawnRequest
+                    var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
+                    entityCommandBuffer.SetComponent(newInstance, new LocalTransform
                     {
-                        Type = spawnerRW.Type,
                         Position = xform.ValueRO.Position,
+                        Rotation = xform.ValueRO.Rotation,
+                        Scale = 1f
                     });
                 }
                 spawner.ValueRW = spawnerRW;
