@@ -15,3 +15,7 @@
 
 14/09
 - Today I'll create the collision system and the memory usage analiser.
+- Implemented collision systems.
+- Fixed a lot of things. My collision system used physics event and interated over it. That's not how NativeStream works.
+- Also removed explicit call for LocalTransform to rely only on TransformUsageFlags
+- Now I'll work to remove singletons that are impeding me to use multiple spawners
