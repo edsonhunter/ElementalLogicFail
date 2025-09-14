@@ -1,5 +1,6 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Jobs;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -28,48 +29,23 @@ namespace ElementLogicFail.Scripts.Systems
         public void OnUpdate(ref SystemState state)
         {
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
-            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.Temp);
-            
-            EntityManager entityManager = state.EntityManager;
             Entity spawnBufferEntity = _spawnBufferQuery.GetSingletonEntity();
-            DynamicBuffer<ElementSpawnRequest> spawnBuffer = entityManager.GetBuffer<ElementSpawnRequest>(spawnBufferEntity);
-
+            
             ComponentLookup<ElementData> lookUpData = SystemAPI.GetComponentLookup<ElementData>(true);
             ComponentLookup<LocalTransform> xformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
-
-            CollisionEvents events = simulation.AsSimulation().CollisionEvents;
-            foreach (CollisionEvent collisionEvent in events)
-            {
-                Entity a = collisionEvent.EntityA;
-                Entity b = collisionEvent.EntityB;
-                
-                bool aIsElement = lookUpData.HasComponent(a);
-                bool bIsElement = lookUpData.HasComponent(b);
-
-                if (!aIsElement && !bIsElement)
-                {
-                    continue;
-                }
-                
-                ElementType typeA = lookUpData[a].Type;
-                ElementType typeB = lookUpData[b].Type;
-                float3 position = 0.5f * (xformLookup[a].Position + xformLookup[b].Position);
-
-                if (typeA == typeB)
-                {
-                    spawnBuffer.Add(new ElementSpawnRequest
-                    {
-                        Type = typeA,
-                        Position = position,
-                    });
-                }
-                else
-                {
-                    entityCommandBuffer.DestroyEntity(a);
-                    entityCommandBuffer.DestroyEntity(b);
-                }
-            }
+            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+            var spawnBuffer = SystemAPI.GetBufferLookup<ElementSpawnRequest>();
             
+            var job = new CollisionEventJob
+            {
+                ElementLookup = lookUpData,
+                LocalTransformLookup = xformLookup,
+                SpawnBufferLookup = spawnBuffer,
+                EntityCommandBuffer = entityCommandBuffer.AsParallelWriter()
+            };
+            
+            state.Dependency = job.Schedule(simulation, state.Dependency);
+            state.Dependency.Complete();
             entityCommandBuffer.Playback(state.EntityManager);
             entityCommandBuffer.Dispose();
         }
