@@ -1,15 +1,32 @@
 ﻿using Unity.Entities;
-using UnityEngine;
+using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
+using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Authoring.Spawner
 {
-    public class SpawnerBaker : MonoBehaviour
+    public class SpawnerBaker : Baker<SpawnerAuthoring>
     {
-        private class SpawnerBakerBaker : Baker<SpawnerBaker>
+        public override void Bake(SpawnerAuthoring authoring)
         {
-            public override void Bake(SpawnerBaker authoring)
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            var prefabEntity = GetEntity(authoring.prefab, TransformUsageFlags.Dynamic);
+
+            AddComponent(entity, new Components.Spawner.Spawner
             {
-            }
+                Type = authoring.type,
+                SpawnRate = authoring.spawnRate,
+                ElementPrefab = prefabEntity
+            });
+            
+            AddComponent(entity, LocalTransform.Identity);
+            
+            AddComponent(GetEntity(TransformUsageFlags.None), new SpawnControl
+            {
+                SpawnRateMultiplier = 1f
+            });
+
+            AddBuffer<ElementSpawnRequest>(GetEntity(TransformUsageFlags.None));
         }
     }
 }
