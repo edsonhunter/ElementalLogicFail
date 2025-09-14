@@ -11,7 +11,6 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
             var prefabEntity = GetEntity(authoring.prefab, TransformUsageFlags.Dynamic);
-
             
             AddComponent(entity, new Components.Spawner.Spawner
             {
