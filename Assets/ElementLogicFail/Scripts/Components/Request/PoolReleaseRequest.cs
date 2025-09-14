@@ -2,8 +2,8 @@
 
 namespace ElementLogicFail.Scripts.Components.Request
 {
-    public struct PoolReleaseRequest : IComponentData
+    public struct PoolReleaseRequest : IBufferElementData
     {
-        
+        public Entity ReleaseEntity;
     }
 }

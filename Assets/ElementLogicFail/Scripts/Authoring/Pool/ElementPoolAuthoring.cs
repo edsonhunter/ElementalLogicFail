@@ -5,11 +5,7 @@ namespace ElementLogicFail.Scripts.Authoring.Pool
 {
     public class ElementPoolAuthoring : MonoBehaviour
     {
-        private class ElementPoolAuthoringBaker : Baker<ElementPoolAuthoring>
-        {
-            public override void Bake(ElementPoolAuthoring authoring)
-            {
-            }
-        }
+        public int InitialSize = 32;
+        public GameObject Prefab;
     }
 }

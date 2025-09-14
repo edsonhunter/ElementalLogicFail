@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace ElementLogicFail.Scripts.Components.Element
+namespace ElementLogicFail.Scripts.Components.Pool
 {
     public struct ElementPoolTag : IComponentData
     {

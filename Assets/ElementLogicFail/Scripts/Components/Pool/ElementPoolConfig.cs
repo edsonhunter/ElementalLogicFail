@@ -2,8 +2,8 @@
 
 namespace ElementLogicFail.Scripts.Components.Pool
 {
-    public struct PooledElement : IBufferElementData
+    public struct ElementPoolConfig : IComponentData
     {
-        public Entity Entity;
+        public int InitialSize;
     }
 }
