@@ -6,6 +6,7 @@ using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Systems.Spawner
 {
+    [BurstCompile]
     public partial struct SpawnerSystem : ISystem
     {
         [BurstCompile]
