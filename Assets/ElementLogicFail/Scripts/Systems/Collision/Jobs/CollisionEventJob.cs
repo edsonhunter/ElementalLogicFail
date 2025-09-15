@@ -1,19 +1,18 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using ElementLogicFail.Scripts.Components.Request;
-using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
 
-namespace ElementLogicFail.Scripts.Jobs
+namespace ElementLogicFail.Scripts.Systems.Collision.Jobs
 {
     public struct CollisionEventJob : ICollisionEventsJob
     {
         [ReadOnly] public ComponentLookup<ElementData> ElementLookup;
         [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
-        [ReadOnly] public ComponentLookup<Spawner> SpawnerLookup;
+        [ReadOnly] public ComponentLookup<Components.Spawner.Spawner> SpawnerLookup;
         
         public BufferLookup<ElementSpawnRequest> BufferLookup;
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
