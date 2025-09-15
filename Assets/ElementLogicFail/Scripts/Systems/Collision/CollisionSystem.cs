@@ -11,7 +11,6 @@ namespace ElementLogicFail.Scripts.Systems.Collision
 {
     [BurstCompile]
     [UpdateInGroup(typeof(AfterPhysicsSystemGroup))]
-    [UpdateAfter(typeof(PhysicsSimulationGroup))]
     public partial struct CollisionSystem : ISystem
     {
         private ComponentLookup<ElementData> _elementLookup;
@@ -24,7 +23,6 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             
             _elementLookup = SystemAPI.GetComponentLookup<ElementData>(true);
             _localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
-
         }
 
         [BurstCompile]

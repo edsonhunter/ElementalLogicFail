@@ -5,6 +5,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Systems.Collision.Jobs
 {
@@ -19,6 +20,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision.Jobs
             Entity a = collisionEvent.EntityA;
             Entity b = collisionEvent.EntityB;
 
+            Debug.Log($"Has a Component? {ElementLookup.HasComponent(a)} | and b component? {ElementLookup.HasComponent(b)}");
             if (!ElementLookup.HasComponent(a) && !ElementLookup.HasComponent(b))
             {
                 return;
@@ -27,7 +29,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision.Jobs
             var dataA = ElementLookup[a];
             var dataB = ElementLookup[b];
             float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
-
+            Debug.Log($"$Check elements: position {position}, dataA type: {dataA.Type}, dataB type: {dataB.Type}");
             if (dataA.Type == dataB.Type)
             {
                 Entity requestEntity = EntityCommandBuffer.CreateEntity(0);
