@@ -31,9 +31,9 @@ namespace ElementLogicFail.Scripts.Systems.Wander
                 {
                     var rand = new Unity.Mathematics.Random(elementRW.RandomSeed);
                     elementRW.Target = new float3(
-                        rand.NextFloat(area.Min.x, area.Max.x),
+                        rand.NextFloat(area.MinArea.x, area.MaxArea.x),
                         0,
-                        rand.NextFloat(area.Min.z, area.Max.z));
+                        rand.NextFloat(area.MinArea.z, area.MaxArea.z));
                     elementRW.RandomSeed = rand.NextUInt();
                 }
                 

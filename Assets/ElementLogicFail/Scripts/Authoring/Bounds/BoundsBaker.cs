@@ -10,8 +10,8 @@ namespace ElementLogicFail.Scripts.Authoring.Bounds
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, new WanderArea
             {
-                Min = authoring.min,
-                Max = authoring.max
+                MinArea = authoring.min,
+                MaxArea = authoring.max
             });
         }
     }

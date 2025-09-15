@@ -1,7 +1,5 @@
 ﻿using Unity.Entities;
 using ElementLogicFail.Scripts.Components.Request;
-using ElementLogicFail.Scripts.Components.Spawner;
-using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Authoring.Spawner
 {
@@ -16,7 +14,8 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
             {
                 Type = authoring.type,
                 SpawnRate = authoring.spawnRate,
-                ElementPrefab = prefabEntity
+                ElementPrefab = prefabEntity,
+                Timer = 0f
             });
 
             AddBuffer<ElementSpawnRequest>(GetEntity(TransformUsageFlags.None));

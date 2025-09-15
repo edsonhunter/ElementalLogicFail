@@ -1,4 +1,5 @@
-﻿using ElementLogicFail.Scripts.Components.Spawner;
+﻿using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -20,21 +21,28 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
             var deltaTime = SystemAPI.Time.DeltaTime;
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
-            foreach (var (spawner, xform) in
-                     SystemAPI.Query<RefRW<Components.Spawner.Spawner>, RefRO<LocalTransform>>())
+            foreach (var (spawner, entity) in
+                     SystemAPI.Query<RefRW<Components.Spawner.Spawner>>().WithEntityAccess())
             {
                 Components.Spawner.Spawner spawnerRW = spawner.ValueRW;
-                spawnerRW.SpawnRate += deltaTime;
-                if (spawnerRW.SpawnRate >= math.max(0.01f, spawnerRW.SpawnRate))
+                spawnerRW.Timer += deltaTime;
+                if (spawnerRW.Timer >= spawnerRW.SpawnRate)
                 {
-                    spawnerRW.SpawnRate = 0f;
-                    var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
-                    entityCommandBuffer.SetComponent(newInstance, new LocalTransform
+                    spawnerRW.Timer = 0f;
+                    DynamicBuffer<ElementSpawnRequest> buffer = state.EntityManager.GetBuffer<ElementSpawnRequest>(entity);
+                    buffer.Add(new ElementSpawnRequest
                     {
-                        Position = xform.ValueRO.Position,
-                        Rotation = xform.ValueRO.Rotation,
-                        Scale = 1f
+                        Type = spawnerRW.Type,
+                        Position = float3.zero,
                     });
+                    
+                    DynamicBuffer<ElementSpawnRequest> request = state.EntityManager.GetBuffer<ElementSpawnRequest>(entity);
+                    foreach (ElementSpawnRequest spawnerRequest in request)
+                    {
+                        var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
+                        entityCommandBuffer.SetComponent(newInstance, LocalTransform.FromPosition(spawnerRequest.Position));    
+                    }
+                    request.Clear();
                 }
                 spawner.ValueRW = spawnerRW;
             }
