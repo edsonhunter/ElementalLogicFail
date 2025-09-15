@@ -1,5 +1,4 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
-using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Systems.Collision.Jobs;
 using Unity.Burst;
 using Unity.Collections;
@@ -11,32 +10,37 @@ using Unity.Transforms;
 namespace ElementLogicFail.Scripts.Systems.Collision
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(PhysicsSystemGroup))]
+    [UpdateInGroup(typeof(AfterPhysicsSystemGroup))]
     [UpdateAfter(typeof(PhysicsSimulationGroup))]
     public partial struct CollisionSystem : ISystem
     {
+        private ComponentLookup<ElementData> _elementLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<SimulationSingleton>();
+            
+            _elementLookup = SystemAPI.GetComponentLookup<ElementData>(true);
+            _localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _elementLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
-            
-            ComponentLookup<ElementData> elementLookUpData = SystemAPI.GetComponentLookup<ElementData>(true);
-            ComponentLookup<LocalTransform> transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
-            
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
-            EntityCommandBuffer.ParallelWriter parallel = entityCommandBuffer.AsParallelWriter();
             
             var job = new CollisionEventJob
             {
-                ElementLookup = elementLookUpData,
-                LocalTransformLookup = transformLookup,
-                EntityCommandBuffer = parallel
+                ElementLookup = _elementLookup,
+                LocalTransformLookup = _localTransformLookup,
+                EntityCommandBuffer = entityCommandBuffer.AsParallelWriter(),
             };
             
             state.Dependency = job.Schedule(simulation, state.Dependency);
