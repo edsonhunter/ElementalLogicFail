@@ -5,7 +5,7 @@ namespace ElementLogicFail.Scripts.Components.Bounds
 {
     public struct WanderArea : IComponentData
     {
-        public float3 Min;
-        public float3 Max;
+        public float3 MinArea;
+        public float3 MaxArea;
     }
 }

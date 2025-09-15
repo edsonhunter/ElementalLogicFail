@@ -8,5 +8,6 @@ namespace ElementLogicFail.Scripts.Components.Spawner
         public ElementType Type;
         public Entity ElementPrefab;
         public float SpawnRate;
+        public float Timer;
     }
 }
