@@ -1,5 +1,6 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -12,45 +13,37 @@ namespace ElementLogicFail.Scripts.Jobs
     {
         [ReadOnly] public ComponentLookup<ElementData> ElementLookup;
         [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+        [ReadOnly] public ComponentLookup<Spawner> SpawnerLookup;
         
-        public BufferLookup<ElementSpawnRequest> SpawnBufferLookup;
+        public BufferLookup<ElementSpawnRequest> BufferLookup;
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
         
         public void Execute(CollisionEvent collisionEvent)
         {
             Entity a = collisionEvent.EntityA;
             Entity b = collisionEvent.EntityB;
-            bool aIsElement = ElementLookup.HasComponent(a);
-            bool bIsElement = ElementLookup.HasComponent(b);
 
-            if (!aIsElement && !bIsElement)
+            if (!ElementLookup.HasComponent(a) && !ElementLookup.HasComponent(b))
             {
                 return;
             }
-                
+
             ElementType typeA = ElementLookup[a].Type;
             ElementType typeB = ElementLookup[b].Type;
             float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
 
             if (typeA == typeB)
             {
-                if (SpawnBufferLookup.HasBuffer(a))
+                if (SpawnerLookup.HasComponent(a))
                 {
-                    DynamicBuffer<ElementSpawnRequest> buffer = SpawnBufferLookup[a];
-                    buffer.Add(new ElementSpawnRequest
+                    if (SpawnerLookup[a].Type == typeA && BufferLookup.HasBuffer(a))
                     {
-                        Type = typeA,
-                        Position = position,
-                    });
-                }
-                else if (SpawnBufferLookup.HasBuffer(b))
-                {
-                    var buffer = SpawnBufferLookup[b];
-                    buffer.Add(new ElementSpawnRequest
-                    {
-                        Type = typeB,
-                        Position = position,
-                    });
+                        BufferLookup[a].Add(new ElementSpawnRequest
+                        {
+                            Type = typeA,
+                            Position = position
+                        });
+                    }
                 }
             }
             else

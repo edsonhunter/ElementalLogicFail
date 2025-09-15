@@ -18,11 +18,6 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
                 SpawnRate = authoring.spawnRate,
                 ElementPrefab = prefabEntity
             });
-            
-            /*AddComponent(GetEntity(TransformUsageFlags.None), new SpawnControl
-            {
-                SpawnRateMultiplier = 1f
-            });*/
 
             AddBuffer<ElementSpawnRequest>(GetEntity(TransformUsageFlags.None));
         }

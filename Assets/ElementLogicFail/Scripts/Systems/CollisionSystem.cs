@@ -4,6 +4,7 @@ using ElementLogicFail.Scripts.Jobs;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
@@ -16,9 +17,12 @@ namespace ElementLogicFail.Scripts.Systems
     [UpdateAfter(typeof(PhysicsSimulationGroup))]
     public partial struct CollisionSystem : ISystem
     {
+        private EntityQuery _spawnBufferQuery;
+        
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _spawnBufferQuery = state.GetEntityQuery(ComponentType.ReadWrite<ElementSpawnRequest>());
             state.RequireForUpdate<SimulationSingleton>();
         }
 
@@ -27,21 +31,26 @@ namespace ElementLogicFail.Scripts.Systems
         {
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
             
-            ComponentLookup<ElementData> lookUpData = SystemAPI.GetComponentLookup<ElementData>(true);
+            ComponentLookup<ElementData> elementLookUpData = SystemAPI.GetComponentLookup<ElementData>(true);
             ComponentLookup<LocalTransform> xformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+            ComponentLookup<Components.Spawner.Spawner> spawnerLookup = SystemAPI.GetComponentLookup<Components.Spawner.Spawner>(true);
+            BufferLookup<ElementSpawnRequest> bufferLookup = SystemAPI.GetBufferLookup<ElementSpawnRequest>();
+            
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
-            var spawnBuffer = SystemAPI.GetBufferLookup<ElementSpawnRequest>();
+            EntityCommandBuffer.ParallelWriter parallel = entityCommandBuffer.AsParallelWriter();
             
             var job = new CollisionEventJob
             {
-                ElementLookup = lookUpData,
+                ElementLookup = elementLookUpData,
                 LocalTransformLookup = xformLookup,
-                SpawnBufferLookup = spawnBuffer,
-                EntityCommandBuffer = entityCommandBuffer.AsParallelWriter()
+                SpawnerLookup = spawnerLookup,
+                BufferLookup = bufferLookup,
+                EntityCommandBuffer = parallel
             };
             
             state.Dependency = job.Schedule(simulation, state.Dependency);
             state.Dependency.Complete();
+            
             entityCommandBuffer.Playback(state.EntityManager);
             entityCommandBuffer.Dispose();
         }
