@@ -15,7 +15,6 @@ namespace ElementLogicFail.Scripts.Systems.Collision
     [UpdateAfter(typeof(PhysicsSimulationGroup))]
     public partial struct CollisionSystem : ISystem
     {
-        
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -28,9 +27,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
             
             ComponentLookup<ElementData> elementLookUpData = SystemAPI.GetComponentLookup<ElementData>(true);
-            ComponentLookup<LocalTransform> xformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
-            ComponentLookup<Components.Spawner.Spawner> spawnerLookup = SystemAPI.GetComponentLookup<Components.Spawner.Spawner>(true);
-            BufferLookup<ElementSpawnRequest> bufferLookup = SystemAPI.GetBufferLookup<ElementSpawnRequest>();
+            ComponentLookup<LocalTransform> transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             EntityCommandBuffer.ParallelWriter parallel = entityCommandBuffer.AsParallelWriter();
@@ -38,9 +35,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             var job = new CollisionEventJob
             {
                 ElementLookup = elementLookUpData,
-                LocalTransformLookup = xformLookup,
-                SpawnerLookup = spawnerLookup,
-                BufferLookup = bufferLookup,
+                LocalTransformLookup = transformLookup,
                 EntityCommandBuffer = parallel
             };
             
