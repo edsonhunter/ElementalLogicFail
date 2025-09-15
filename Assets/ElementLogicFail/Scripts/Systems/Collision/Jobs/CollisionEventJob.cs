@@ -12,9 +12,6 @@ namespace ElementLogicFail.Scripts.Systems.Collision.Jobs
     {
         [ReadOnly] public ComponentLookup<ElementData> ElementLookup;
         [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
-        [ReadOnly] public ComponentLookup<Components.Spawner.Spawner> SpawnerLookup;
-        
-        public BufferLookup<ElementSpawnRequest> BufferLookup;
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
         
         public void Execute(CollisionEvent collisionEvent)
@@ -27,23 +24,19 @@ namespace ElementLogicFail.Scripts.Systems.Collision.Jobs
                 return;
             }
 
-            ElementType typeA = ElementLookup[a].Type;
-            ElementType typeB = ElementLookup[b].Type;
+            var dataA = ElementLookup[a];
+            var dataB = ElementLookup[b];
             float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
 
-            if (typeA == typeB)
+            if (dataA.Type == dataB.Type)
             {
-                if (SpawnerLookup.HasComponent(a))
-                {
-                    if (SpawnerLookup[a].Type == typeA && BufferLookup.HasBuffer(a))
+                Entity requestEntity = EntityCommandBuffer.CreateEntity(0);
+                EntityCommandBuffer.AddBuffer<ElementSpawnRequest>(0, requestEntity)
+                    .Add(new ElementSpawnRequest
                     {
-                        BufferLookup[a].Add(new ElementSpawnRequest
-                        {
-                            Type = typeA,
-                            Position = position
-                        });
-                    }
-                }
+                        Type = dataA.Type,
+                        Position = position
+                    });
             }
             else
             {

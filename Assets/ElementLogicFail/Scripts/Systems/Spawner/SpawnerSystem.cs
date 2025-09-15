@@ -20,9 +20,8 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
             EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-
-            foreach (var (spawner, entity) in
-                     SystemAPI.Query<RefRW<Components.Spawner.Spawner>>().WithEntityAccess())
+            foreach (var (spawner, transform, entity) in
+                     SystemAPI.Query<RefRW<Components.Spawner.Spawner>, RefRO<LocalTransform>>().WithEntityAccess())
             {
                 Components.Spawner.Spawner spawnerRW = spawner.ValueRW;
                 spawnerRW.Timer += deltaTime;
@@ -33,14 +32,18 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                     buffer.Add(new ElementSpawnRequest
                     {
                         Type = spawnerRW.Type,
-                        Position = float3.zero,
+                        Position = transform.ValueRO.Position,
                     });
                     
                     DynamicBuffer<ElementSpawnRequest> request = state.EntityManager.GetBuffer<ElementSpawnRequest>(entity);
                     foreach (ElementSpawnRequest spawnerRequest in request)
                     {
-                        var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
-                        entityCommandBuffer.SetComponent(newInstance, LocalTransform.FromPosition(spawnerRequest.Position));    
+                        if (spawnerRequest.Type == spawnerRW.Type)
+                        {
+                            var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
+                            entityCommandBuffer.SetComponent(newInstance,
+                                LocalTransform.FromPosition(spawnerRequest.Position));
+                        }
                     }
                     request.Clear();
                 }
