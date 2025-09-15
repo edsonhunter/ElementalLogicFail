@@ -1,28 +1,24 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using ElementLogicFail.Scripts.Components.Request;
-using ElementLogicFail.Scripts.Jobs;
+using ElementLogicFail.Scripts.Systems.Collision.Jobs;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
-using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
 
-namespace ElementLogicFail.Scripts.Systems
+namespace ElementLogicFail.Scripts.Systems.Collision
 {
     [BurstCompile]
     [UpdateInGroup(typeof(PhysicsSystemGroup))]
     [UpdateAfter(typeof(PhysicsSimulationGroup))]
     public partial struct CollisionSystem : ISystem
     {
-        private EntityQuery _spawnBufferQuery;
         
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _spawnBufferQuery = state.GetEntityQuery(ComponentType.ReadWrite<ElementSpawnRequest>());
             state.RequireForUpdate<SimulationSingleton>();
         }
 
