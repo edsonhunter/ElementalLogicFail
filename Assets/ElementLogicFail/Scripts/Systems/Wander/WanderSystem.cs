@@ -29,7 +29,7 @@ namespace ElementLogicFail.Scripts.Systems.Wander
 
                 if (math.distance(transformRW.Position, elementRW.Target) < 0.2f)
                 {
-                    var rand = new Unity.Mathematics.Random(elementRW.RandomSeed);
+                    var rand = new Unity.Mathematics.Random(elementRW.RandomSeed = elementRW.RandomSeed * 1664525u + 1013904223u);
                     elementRW.Target = new float3(
                         rand.NextFloat(area.MinArea.x, area.MaxArea.x),
                         0,
