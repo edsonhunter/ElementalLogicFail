@@ -3,7 +3,9 @@ using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics.Systems;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Systems.Spawner
 {
@@ -13,13 +15,21 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<Components.Spawner.Spawner>();
+            state.RequireForUpdate<ElementSpawnRequest>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            Debug.Log("SpawnerSystem Update");
             var deltaTime = SystemAPI.Time.DeltaTime;
-            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+            var entitySimulationCommandBufferSystem =
+                SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            EntityCommandBuffer entityCommandBuffer =
+                entitySimulationCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged);
+
             foreach (var (spawner, transform, entity) in
                      SystemAPI.Query<RefRW<Components.Spawner.Spawner>, RefRO<LocalTransform>>().WithEntityAccess())
             {
@@ -28,35 +38,21 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 if (spawnerRW.Timer >= spawnerRW.SpawnRate)
                 {
                     spawnerRW.Timer = 0f;
-                    DynamicBuffer<ElementSpawnRequest> buffer = state.EntityManager.GetBuffer<ElementSpawnRequest>(entity);
+                    DynamicBuffer<ElementSpawnRequest> buffer = entityCommandBuffer.AddBuffer<ElementSpawnRequest>(entity);
                     buffer.Add(new ElementSpawnRequest
                     {
                         Type = spawnerRW.Type,
                         Position = transform.ValueRO.Position,
                     });
-                    
-                    DynamicBuffer<ElementSpawnRequest> request = state.EntityManager.GetBuffer<ElementSpawnRequest>(entity);
-                    foreach (ElementSpawnRequest spawnerRequest in request)
-                    {
-                        if (spawnerRequest.Type == spawnerRW.Type)
-                        {
-                            var newInstance = entityCommandBuffer.Instantiate(spawnerRW.ElementPrefab);
-                            entityCommandBuffer.SetComponent(newInstance,
-                                LocalTransform.FromPosition(spawnerRequest.Position));
-                        }
-                    }
-                    request.Clear();
+                    spawner.ValueRW = spawnerRW;
+                    Debug.Log("Added buffer");
                 }
-                spawner.ValueRW = spawnerRW;
             }
-            entityCommandBuffer.Playback(state.EntityManager);
-            entityCommandBuffer.Dispose();
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-
         }
     }
 }
