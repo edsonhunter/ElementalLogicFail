@@ -19,3 +19,12 @@
 - Fixed a lot of things. My collision system used physics event and interated over it. That's not how NativeStream works.
 - Also removed explicit call for LocalTransform to rely only on TransformUsageFlags
 - Now I'll work to remove singletons that are impeding me to use multiple spawners
+
+15/09
+- I fixed a lot of issues with collisions today.
+- Learned how collisions events works for entities
+- imported a custom library with collision data and rigidBody data compoenents for entities
+- Divided the spawner into two separeted systems
+- Learned how systems works under the hood by Unity
+- Leraned how jobs and requests were added to buffer than read from it.
+- I thought I would start the system architecture but instead I played a little longer with DOTS
