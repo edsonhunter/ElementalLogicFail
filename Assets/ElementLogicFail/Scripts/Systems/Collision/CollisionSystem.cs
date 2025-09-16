@@ -7,7 +7,6 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
-using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Systems.Collision
 {
