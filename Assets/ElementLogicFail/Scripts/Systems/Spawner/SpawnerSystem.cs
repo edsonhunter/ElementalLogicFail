@@ -10,6 +10,7 @@ using UnityEngine;
 namespace ElementLogicFail.Scripts.Systems.Spawner
 {
     [BurstCompile]
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
     public partial struct SpawnerSystem : ISystem
     {
         [BurstCompile]
@@ -23,7 +24,6 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            Debug.Log("SpawnerSystem Update");
             var deltaTime = SystemAPI.Time.DeltaTime;
             var entitySimulationCommandBufferSystem =
                 SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -38,14 +38,14 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 if (spawnerRW.Timer >= spawnerRW.SpawnRate)
                 {
                     spawnerRW.Timer = 0f;
-                    DynamicBuffer<ElementSpawnRequest> buffer = entityCommandBuffer.AddBuffer<ElementSpawnRequest>(entity);
+                    DynamicBuffer<ElementSpawnRequest> buffer =
+                        entityCommandBuffer.AddBuffer<ElementSpawnRequest>(entity);
                     buffer.Add(new ElementSpawnRequest
                     {
                         Type = spawnerRW.Type,
                         Position = transform.ValueRO.Position,
                     });
                     spawner.ValueRW = spawnerRW;
-                    Debug.Log("Added buffer");
                 }
             }
         }
