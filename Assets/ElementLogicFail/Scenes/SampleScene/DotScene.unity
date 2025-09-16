@@ -272,6 +272,7 @@ GameObject:
   - component: {fileID: 1412271719}
   - component: {fileID: 1412271718}
   - component: {fileID: 1412271717}
+  - component: {fileID: 1412271721}
   m_Layer: 0
   m_Name: Plane
   m_TagString: Untagged
@@ -372,30 +373,13 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1642507971
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1642507973}
-  - component: {fileID: 1642507972}
-  m_Layer: 0
-  m_Name: WanderArea
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1642507972
+--- !u!114 &1412271721
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1642507971}
+  m_GameObject: {fileID: 1412271716}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aba01054a06849b4823874d98213b7f9, type: 3}
@@ -403,21 +387,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ElementLogicFail.Scripts.Authoring.Bounds.BoundsAuthoring
   min: {x: -10, y: 0, z: -10}
   max: {x: 10, y: 0, z: 10}
---- !u!4 &1642507973
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1642507971}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1853416370
 GameObject:
   m_ObjectHideFlags: 0
@@ -473,5 +442,4 @@ SceneRoots:
   - {fileID: 496306361}
   - {fileID: 596508302}
   - {fileID: 1853416372}
-  - {fileID: 1642507973}
   - {fileID: 1412271720}
