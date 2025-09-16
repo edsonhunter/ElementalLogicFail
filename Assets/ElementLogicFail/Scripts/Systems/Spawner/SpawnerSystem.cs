@@ -34,6 +34,7 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                      SystemAPI.Query<RefRW<Components.Spawner.Spawner>, RefRO<LocalTransform>>().WithEntityAccess())
             {
                 Components.Spawner.Spawner spawnerRW = spawner.ValueRW;
+                
                 spawnerRW.Timer += deltaTime;
                 if (spawnerRW.Timer >= spawnerRW.SpawnRate)
                 {
@@ -45,8 +46,8 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                         Type = spawnerRW.Type,
                         Position = transform.ValueRO.Position,
                     });
-                    spawner.ValueRW = spawnerRW;
                 }
+                spawner.ValueRW = spawnerRW;
             }
         }
 
