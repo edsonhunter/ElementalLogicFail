@@ -1,5 +1,6 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -17,7 +18,9 @@ namespace ElementLogicFail.Scripts.Systems.Collision
     {
         private ComponentLookup<ElementData> _elementLookup;
         private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<SpawnerRegistry> _spawnerRegistryLookup;
         
+        private NativeParallelHashMap<int, Entity> _typeToSpawnerMap;
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -26,6 +29,9 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             
             _elementLookup = SystemAPI.GetComponentLookup<ElementData>(true);
             _localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+            _spawnerRegistryLookup = SystemAPI.GetComponentLookup<SpawnerRegistry>(true);
+            
+            _typeToSpawnerMap = new NativeParallelHashMap<int, Entity>(16, Allocator.Persistent);
         }
 
         [BurstCompile]
@@ -33,15 +39,23 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         {
             _elementLookup.Update(ref state);
             _localTransformLookup.Update(ref state);
+            _spawnerRegistryLookup.Update(ref state);
+            
+            _typeToSpawnerMap.Clear();
+            foreach (var (registry, entity) in SystemAPI.Query<RefRO<SpawnerRegistry>>().WithEntityAccess())
+            {
+                _typeToSpawnerMap[(int)registry.ValueRO.Type] = registry.ValueRO.SpawnerEntity;
+            }
             
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
             EndSimulationEntityCommandBufferSystem.Singleton endSimulationEntityCommandBufferSystem = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             EntityCommandBuffer.ParallelWriter parallelWriter = endSimulationEntityCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
+            
             var job = new CollisionEventJob
             {
                 ElementLookup = _elementLookup,
                 LocalTransformLookup = _localTransformLookup,
+                TypeToSpawnerMap = _typeToSpawnerMap,
                 EntityCommandBuffer = parallelWriter,
             };
             
@@ -51,7 +65,8 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-
+            if (_typeToSpawnerMap.IsCreated)
+                _typeToSpawnerMap.Dispose();
         }
     }
     
@@ -59,8 +74,10 @@ namespace ElementLogicFail.Scripts.Systems.Collision
     {
         [ReadOnly] public ComponentLookup<ElementData> ElementLookup;
         [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
-        public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
+        [ReadOnly] public NativeParallelHashMap<int, Entity>  TypeToSpawnerMap;
         
+        public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
+
         public void Execute(CollisionEvent collisionEvent)
         {
             Entity a = collisionEvent.EntityA;
@@ -77,13 +94,14 @@ namespace ElementLogicFail.Scripts.Systems.Collision
 
             if (dataA.Type == dataB.Type)
             {
-                Entity requestEntity = EntityCommandBuffer.CreateEntity(0);
-                var buffer = EntityCommandBuffer.AddBuffer<ElementSpawnRequest>(0, requestEntity);
-                buffer.Add(new ElementSpawnRequest
+                if (TypeToSpawnerMap.TryGetValue((int)dataA.Type, out var spawnerEntity))
+                {
+                    EntityCommandBuffer.AppendToBuffer(0, spawnerEntity, new ElementSpawnRequest
                     {
                         Type = dataA.Type,
                         Position = position
                     });
+                }
             }
             else
             {

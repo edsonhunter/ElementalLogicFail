@@ -1,5 +1,6 @@
 ﻿using Unity.Entities;
 using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
 
 namespace ElementLogicFail.Scripts.Authoring.Spawner
 {
@@ -9,7 +10,7 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
             var prefabEntity = GetEntity(authoring.prefab, TransformUsageFlags.Dynamic);
-            
+
             AddComponent(entity, new Components.Spawner.Spawner
             {
                 Type = authoring.type,
@@ -18,6 +19,12 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
                 Timer = 0f
             });
 
+            var registryEntity = CreateAdditionalEntity(TransformUsageFlags.None);
+            AddComponent(registryEntity, new SpawnerRegistry
+            {
+                Type = authoring.type,
+                SpawnerEntity = entity
+            });
             AddBuffer<ElementSpawnRequest>(GetEntity(TransformUsageFlags.None));
         }
     }
