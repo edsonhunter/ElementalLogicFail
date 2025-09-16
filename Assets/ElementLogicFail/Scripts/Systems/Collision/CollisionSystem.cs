@@ -66,16 +66,14 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         
         public void Execute(CollisionEvent collisionEvent)
         {
-            Debug.Log($"Collision event: {collisionEvent}");
             Entity a = collisionEvent.EntityA;
             Entity b = collisionEvent.EntityB;
 
-            Debug.Log($"Has a Component? {ElementLookup.HasComponent(a)} | and b component? {ElementLookup.HasComponent(b)}");
-            if (!ElementLookup.HasComponent(a) && !ElementLookup.HasComponent(b))
+            if (!ElementLookup.HasComponent(a) || !ElementLookup.HasComponent(b))
             {
                 return;
             }
-
+            
             var dataA = ElementLookup[a];
             var dataB = ElementLookup[b];
             float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
