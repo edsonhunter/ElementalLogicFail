@@ -1,10 +1,12 @@
-﻿using ElementLogicFail.Scripts.Components.Request;
+﻿using ElementLogicFail.Scripts.Components.Bounds;
+using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Systems.Collision;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
-using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Systems.Spawner
 {
@@ -18,25 +20,38 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<WanderArea>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var area = SystemAPI.GetSingleton<WanderArea>();
             var entitySimulationCommandBufferSystem =
                 SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             EntityCommandBuffer entityCommandBuffer =
                 entitySimulationCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged);
             
-            foreach (var (buffer, entity) in
+            foreach (var (buffer, spawner) in
                      SystemAPI.Query<DynamicBuffer<ElementSpawnRequest>, RefRO<Components.Spawner.Spawner>>())
             {
                 foreach (var request in buffer)
                 {
-                    if (request.Type == entity.ValueRO.Type)
+                    if (request.Type == spawner.ValueRO.Type)
                     {
-                        var newEntity = entityCommandBuffer.Instantiate(entity.ValueRO.ElementPrefab);
-                        entityCommandBuffer.SetComponent(newEntity, LocalTransform.FromPosition(request.Position));   
+                        var rand = new Random((uint)UnityEngine.Random.Range(1, int.MaxValue));
+                        var newEntity = entityCommandBuffer.Instantiate(spawner.ValueRO.ElementPrefab);
+                        entityCommandBuffer.SetComponent(newEntity, LocalTransform.FromPosition(request.Position));
+                        entityCommandBuffer.SetComponent(newEntity, new ElementData
+                        {
+                            Type = request.Type,
+                            Speed = 2f,
+                            Target = new float3(
+                                rand.NextFloat(area.MinArea.x, area.MaxArea.x),
+                                0,
+                                rand.NextFloat(area.MinArea.z, area.MaxArea.z)),
+                            RandomSeed = rand.NextUInt()
+                        });
                     }
                 }
 
