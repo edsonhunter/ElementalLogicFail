@@ -15,7 +15,8 @@ namespace ElementLogicFail.Scripts.Authoring.Element
                 Type = authoring.Type,
                 Speed = authoring.speed,
                 Target = float3.zero,
-                RandomSeed = (uint)UnityEngine.Random.Range(1, int.MaxValue)  
+                RandomSeed = (uint)UnityEngine.Random.Range(1, int.MaxValue),
+                Cooldown = authoring.Cooldown,
             });
         }
     }

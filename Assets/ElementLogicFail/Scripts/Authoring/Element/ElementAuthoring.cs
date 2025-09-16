@@ -7,5 +7,6 @@ namespace ElementLogicFail.Scripts.Authoring.Element
     {
         public ElementType Type;
         public float speed;
+        public int Cooldown;
     }
 }
