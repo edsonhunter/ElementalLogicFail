@@ -22,6 +22,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             state.RequireForUpdate<SimulationSingleton>();
             
             _elementLookup = SystemAPI.GetComponentLookup<ElementData>(true);
@@ -35,20 +36,17 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             _localTransformLookup.Update(ref state);
             
             SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
-            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
-            
+            EndSimulationEntityCommandBufferSystem.Singleton endSimulationEntityCommandBufferSystem = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            EntityCommandBuffer.ParallelWriter parallelWriter = endSimulationEntityCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
             var job = new CollisionEventJob
             {
                 ElementLookup = _elementLookup,
                 LocalTransformLookup = _localTransformLookup,
-                EntityCommandBuffer = entityCommandBuffer.AsParallelWriter(),
+                EntityCommandBuffer = parallelWriter,
             };
             
             state.Dependency = job.Schedule(simulation, state.Dependency);
-            state.Dependency.Complete();
-            
-            entityCommandBuffer.Playback(state.EntityManager);
-            entityCommandBuffer.Dispose();
         }
 
         [BurstCompile]
@@ -77,7 +75,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             var dataA = ElementLookup[a];
             var dataB = ElementLookup[b];
             float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
-            Debug.Log($"$Check elements: position {position}, dataA type: {dataA.Type}, dataB type: {dataB.Type}");
+
             if (dataA.Type == dataB.Type)
             {
                 Entity requestEntity = EntityCommandBuffer.CreateEntity(0);
