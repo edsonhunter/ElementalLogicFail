@@ -4,25 +4,29 @@ using UnityEngine;
 
 namespace Unity.Physics.Authoring
 {
-    public class AngularVelocityMotor : BaseJoint
+    public class RotationalMotor : BaseJoint
     {
         [Tooltip("An offset from center of entity with motor. Representing the anchor/pivot point of rotation")]
         public float3 PivotPosition;
         [Tooltip("The axis of rotation of the motor. Value will be normalized")]
         public float3 AxisOfRotation;
-        [Tooltip("Target speed for the motor to maintain, in degrees/s")]
-        public float TargetSpeed;
-        [Tooltip("The magnitude of the maximum impulse the motor can exert in a single step. Applies only to the motor constraint.")]
+        [Tooltip("Motor will maintain this target angle around the AxisOfRotation, in degrees")]
+        public float TargetAngle;
+        [Tooltip("The magnitude of the maximum impulse the motor can exert in one step. Applies only to the motor constraint.")]
         public float MaxImpulseAppliedByMotor = math.INFINITY;
+        [Tooltip("The spring frequency, in Hz. Default value is 74341.31 which describes a stiff spring.")]
+        public float SpringFrequency = Constraint.DefaultSpringFrequency;
+        [Tooltip("A ratio describing how quickly a motor will arrive at the target. A value of 0 will oscillate about a solution indefinitely, while a value of 1 critically damped. Default value is 2530.126 which describes a stiff spring")]
+        public float DampingRatio = Constraint.DefaultDampingRatio;
 
         private float3 PerpendicularAxisLocal;
         private float3 PositionInConnectedEntity;
         private float3 HingeAxisInConnectedEntity;
         private float3 PerpendicularAxisInConnectedEntity;
 
-        class AngularVelocityMotorBaker : JointBaker<AngularVelocityMotor>
+        class RotationalMotorBaker : JointBaker<RotationalMotor>
         {
-            public override void Bake(AngularVelocityMotor authoring)
+            public override void Bake(RotationalMotor authoring)
             {
                 float3 axisInA = math.normalize(authoring.AxisOfRotation);
 
@@ -34,7 +38,7 @@ namespace Unity.Physics.Authoring
                 Math.CalculatePerpendicularNormalized(axisInA, out var perpendicularLocal, out _);
                 authoring.PerpendicularAxisInConnectedEntity = math.mul(bFromA.rot, perpendicularLocal); //perp motor axis in Connected Entity space
 
-                var joint = PhysicsJoint.CreateAngularVelocityMotor(
+                var joint = PhysicsJoint.CreateRotationalMotor(
                     new BodyFrame
                     {
                         Axis = axisInA,
@@ -47,8 +51,11 @@ namespace Unity.Physics.Authoring
                         PerpendicularAxis = authoring.PerpendicularAxisInConnectedEntity,
                         Position = authoring.PositionInConnectedEntity
                     },
-                    math.radians(authoring.TargetSpeed),
-                    authoring.MaxImpulseAppliedByMotor
+                    math.radians(authoring.TargetAngle),
+                    authoring.MaxImpulseAppliedByMotor,
+
+                    authoring.SpringFrequency,
+                    authoring.DampingRatio
                 );
 
                 joint.SetImpulseEventThresholdAllConstraints(authoring.MaxImpulse);
