@@ -36,7 +36,8 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 Components.Spawner.Spawner spawnerRW = spawner.ValueRW;
                 
                 spawnerRW.Timer += deltaTime;
-                if (spawnerRW.Timer >= spawnerRW.SpawnRate)
+                float timePerSpawn = 1f / spawnerRW.SpawnRate;
+                if (spawnerRW.Timer >= timePerSpawn)
                 {
                     spawnerRW.Timer = 0f;
                     entityCommandBuffer.AppendToBuffer(entity, new ElementSpawnRequest
