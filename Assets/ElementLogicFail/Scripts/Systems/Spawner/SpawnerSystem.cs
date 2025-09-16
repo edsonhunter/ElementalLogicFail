@@ -39,9 +39,7 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 if (spawnerRW.Timer >= spawnerRW.SpawnRate)
                 {
                     spawnerRW.Timer = 0f;
-                    DynamicBuffer<ElementSpawnRequest> buffer =
-                        entityCommandBuffer.AddBuffer<ElementSpawnRequest>(entity);
-                    buffer.Add(new ElementSpawnRequest
+                    entityCommandBuffer.AppendToBuffer(entity, new ElementSpawnRequest
                     {
                         Type = spawnerRW.Type,
                         Position = transform.ValueRO.Position,
