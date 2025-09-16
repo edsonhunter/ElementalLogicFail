@@ -9,6 +9,7 @@ namespace ElementLogicFail.Scripts.Components.Element
         public float Speed;
         public float3 Target;
         public uint RandomSeed;
+        public float Cooldown;
     }
 
     public enum ElementType : byte

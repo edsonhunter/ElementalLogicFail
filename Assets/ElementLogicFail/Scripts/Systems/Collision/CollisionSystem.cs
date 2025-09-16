@@ -90,6 +90,11 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             
             var dataA = ElementLookup[a];
             var dataB = ElementLookup[b];
+            if (dataA.Cooldown > 0f || dataB.Cooldown > 0f)
+            {
+                return;
+            }
+            
             float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
 
             if (dataA.Type == dataB.Type)
