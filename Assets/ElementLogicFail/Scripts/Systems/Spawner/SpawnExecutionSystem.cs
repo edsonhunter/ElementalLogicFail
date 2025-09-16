@@ -2,12 +2,14 @@
 using ElementLogicFail.Scripts.Systems.Collision;
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Physics.Systems;
 using Unity.Transforms;
 using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Systems.Spawner
 {
     [BurstCompile]
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
     [UpdateAfter(typeof(SpawnerSystem))]
     [UpdateAfter(typeof(CollisionSystem))]
     public partial struct SpawnExecutionSystem : ISystem
@@ -27,13 +29,15 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 entitySimulationCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged);
             
             foreach (var (buffer, entity) in
-                     SystemAPI.Query<DynamicBuffer<ElementSpawnRequest>>().WithEntityAccess())
+                     SystemAPI.Query<DynamicBuffer<ElementSpawnRequest>, RefRO<Components.Spawner.Spawner>>())
             {
-                var spawner = SystemAPI.GetComponent<Components.Spawner.Spawner>(entity);
                 foreach (var request in buffer)
                 {
-                    var newEntity = entityCommandBuffer.Instantiate(spawner.ElementPrefab);
-                    entityCommandBuffer.SetComponent(newEntity, LocalTransform.FromPosition(request.Position));
+                    if (request.Type == entity.ValueRO.Type)
+                    {
+                        var newEntity = entityCommandBuffer.Instantiate(entity.ValueRO.ElementPrefab);
+                        entityCommandBuffer.SetComponent(newEntity, LocalTransform.FromPosition(request.Position));   
+                    }
                 }
 
                 buffer.Clear();
