@@ -8,7 +8,6 @@ using UnityEngine;
 namespace ElementLogicFail.Scripts.Systems.Spawner
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(SpawnerSystem))]
     [UpdateAfter(typeof(CollisionSystem))]
     public partial struct SpawnExecutionSystem : ISystem
@@ -22,7 +21,6 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            Debug.Log("Spawn Execution System");
             var entitySimulationCommandBufferSystem =
                 SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             EntityCommandBuffer entityCommandBuffer =
@@ -31,9 +29,7 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
             foreach (var (buffer, entity) in
                      SystemAPI.Query<DynamicBuffer<ElementSpawnRequest>>().WithEntityAccess())
             {
-                Debug.Log("Reading buffer");
                 var spawner = SystemAPI.GetComponent<Components.Spawner.Spawner>(entity);
-                Debug.Log($"Added buffer lenght {buffer.Length}");
                 foreach (var request in buffer)
                 {
                     var newEntity = entityCommandBuffer.Instantiate(spawner.ElementPrefab);
