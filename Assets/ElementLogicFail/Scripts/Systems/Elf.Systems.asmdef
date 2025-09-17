@@ -1,20 +1,22 @@
 {
-    "name": "Elf.Tests",
+    "name": "Elf.Systems",
     "rootNamespace": "",
     "references": [
-        "GUID:27619889b8ba8c24980f49ee34dbb44a",
-        "GUID:0acc523941302664db1f4e527237feb3",
-        "GUID:ac88e0386a85820499113b11a72f611f",
-        "GUID:4aa72c14fb6305141ab0bff877438337",
         "GUID:734d92eba21c94caba915361bd5ac177",
-        "GUID:e0cd26848372d4e5c891c569017e11f1",
         "GUID:d8b63aba1907145bea998dd612889d6b",
+        "GUID:2665a8d13d1b3f18800f46e256720795",
         "GUID:3c024e83b8cd8694fb4a11bd98da95a2",
         "GUID:5b95b7014dcdc50418a430792ff827bc",
-        "GUID:a38db7d03b6bd4b4a9803182b1463a6b",
-        "GUID:a5baed0c9693541a5bd947d336ec7659"
+        "GUID:63afb046c8423dd448ae7aba042ea63d",
+        "GUID:6bfefdf09ee6431fae75a6f5e06a0e89",
+        "GUID:a5baed0c9693541a5bd947d336ec7659",
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Android",
+        "Editor",
+        "iOS"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
