@@ -1,5 +1,6 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
 using ElementLogicFail.Scripts.Systems.Collision;
 using ElementLogicFail.Scripts.Tests.Editor;
 using NUnit.Framework;
@@ -15,13 +16,25 @@ namespace ElementLogicFail.Scripts.Tests.Systems
     public class CollisionSystemTest :  ECSTestFixture
     {
         [TestCase(1,1,0,0, true, TestName = "Collide between same elements with no cooldown")]
+        [TestCase(1,2,0,0, false, TestName = "No Collide between different elements")]
         public void CollisionSystem_AddSpawnRequest(int elementA, int elementB, int cooldownA, int cooldownB, bool collision)
         {
-            PhysicsSystemGroup simulationSystem = World.CreateSystemManaged<PhysicsSystemGroup>();
+            PhysicsSystemGroup simulationSystem = World.GetOrCreateSystemManaged<PhysicsSystemGroup>();
             var entitySimulationCommandBufferSystem =
                 World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             EntityManager entityManager = entitySimulationCommandBufferSystem.EntityManager;
-
+            SystemHandle collisionSystem = World.CreateSystem<CollisionSystem>();
+            
+            var spawnerEntity = entityManager.CreateEntity(
+                typeof(SpawnerRegistry),
+                typeof(ElementSpawnRequest)
+            );
+            entityManager.SetComponentData(spawnerEntity, new SpawnerRegistry
+            {
+                Type = (ElementType)elementA,
+                SpawnerEntity = spawnerEntity
+            });
+            
             var entityA = entityManager.CreateEntity(
                 typeof(LocalTransform),
                 typeof(PhysicsCollider),
@@ -45,12 +58,13 @@ namespace ElementLogicFail.Scripts.Tests.Systems
             entityManager.SetComponentData(entityB, new PhysicsCollider { Value = capsule });
             entityManager.SetComponentData(entityB, EntityTest.CreateElementData((ElementType)elementB, 2, cooldownB));
             
-            SystemHandle collisionSystem = World.CreateSystem<CollisionSystem>();
             simulationSystem.Update();
             collisionSystem.Update(World.Unmanaged);
+            World.Unmanaged.GetExistingSystemState<SimulationSystemGroup>().Dependency.Complete();
+            entitySimulationCommandBufferSystem.Update();
             
-            var query = entityManager.CreateEntityQuery(typeof(ElementSpawnRequest));
-            Assert.AreEqual(1, query.CalculateEntityCount());
+            BufferLookup<ElementSpawnRequest> buffer = entitySimulationCommandBufferSystem.GetBufferLookup<ElementSpawnRequest>(true);
+            Assert.AreEqual(collision, buffer[spawnerEntity].Length >= 1);
         }
     }
 }
