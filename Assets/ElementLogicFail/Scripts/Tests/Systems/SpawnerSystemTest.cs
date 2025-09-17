@@ -15,9 +15,13 @@ namespace ElementLogicFail.Scripts.Tests.Systems
         [Test]
         public void Spawner_AddSpawnRequest()
         {
-            var entity =
-                EntityManager.CreateEntity(typeof(Spawner), typeof(LocalTransform), typeof(ElementSpawnRequest));
-            EntityManager.SetComponentData(entity, new Spawner
+            var entitySimulationCommandBufferSystem =
+                World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            var entityManager = entitySimulationCommandBufferSystem.EntityManager;
+            
+            Entity entity =
+                entityManager.CreateEntity(typeof(Spawner), typeof(LocalTransform), typeof(ElementSpawnRequest));
+            entityManager.SetComponentData(entity, new Spawner
             {
                 Type = ElementType.Fire,
                 ElementPrefab = Entity.Null,
@@ -25,16 +29,14 @@ namespace ElementLogicFail.Scripts.Tests.Systems
                 Timer = 1f
             });
             
-            EntityManager.SetComponentData(entity, LocalTransform.FromPosition(float3.zero));
-            var system = World.CreateSystem<SpawnerSystem>();
+            entityManager.SetComponentData(entity, LocalTransform.FromPosition(float3.zero));
+            
+            SystemHandle system = World.CreateSystem<SpawnerSystem>();
             system.Update(World.Unmanaged);
-
-            EndSimulationEntityCommandBufferSystem entitySimulationCommandBufferSystem =
-                World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             entitySimulationCommandBufferSystem.Update();
             
-            DynamicBuffer<ElementSpawnRequest> buffer = EntityManager.GetBuffer<ElementSpawnRequest>(entity);
-            Assert.AreEqual(1, buffer.Length);
+            BufferLookup<ElementSpawnRequest> buffer = entitySimulationCommandBufferSystem.GetBufferLookup<ElementSpawnRequest>(true);
+            Assert.AreEqual(1, buffer[entity].Length);
         }
     }
 }
