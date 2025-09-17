@@ -51,7 +51,7 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                                 0,
                                 rand.NextFloat(area.MinArea.z, area.MaxArea.z)),
                             RandomSeed = rand.NextUInt(),
-                            Cooldown = 10
+                            Cooldown = 2f
                         });
                     }
                 }
