@@ -10,7 +10,8 @@ using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Tests.Systems
 {
-    public class SpawnerSystemTest : ECSTestSetup
+    [TestFixture]
+    public class SpawnerSystemTest : ECSTestFixture
     {
         [Test]
         public void Spawner_AddSpawnRequest()

@@ -21,5 +21,17 @@ namespace ElementLogicFail.Scripts.Tests
             manager.SetComponentData(entity, LocalTransform.FromPosition(new float3(0, 0, 0)));
             return entity;
         }
+
+        public static ElementData CreateElementData(ElementType type, float speed, int cooldown)
+        {
+            return new ElementData()
+            {
+                Type = type,
+                Speed = speed,
+                Cooldown = cooldown,
+                Target = float3.zero,
+                RandomSeed = (uint)UnityEngine.Random.Range(1, int.MaxValue)
+            };
+        }
     }
 }
