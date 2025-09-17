@@ -28,3 +28,14 @@
 - Learned how systems works under the hood by Unity
 - Leraned how jobs and requests were added to buffer than read from it.
 - I thought I would start the system architecture but instead I played a little longer with DOTS
+
+16/09
+- Today I finished the entire game flow (spawn elements -> elements wander around the map -> elements collide and destroy eachother or create a new one) using only ECS
+- Also added a very simple GC memory allocator reader.
+- Started doing Unit Tests for the systems
+- Fixed a lot of issues with the wandering system, the exponetial creation of prefabs when two collide and learned how systems interact with each other.
+- After I finish the UnitTests for the systems I'll finally build the core architecture
+
+17/09
+- I have the intention to create the core architecture for the project
+- The main tasks I'll try to reach today will be dependency injector for GameServices, SceneManager, Loader, and everything except the game design.
