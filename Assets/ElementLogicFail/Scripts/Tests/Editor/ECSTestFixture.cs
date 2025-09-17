@@ -3,7 +3,7 @@ using Unity.Entities;
 
 namespace ElementLogicFail.Scripts.Tests.Editor
 {
-    public class ECSTestSetup
+    public class ECSTestFixture
     {
         protected World World;
         protected EntityManager EntityManager;
