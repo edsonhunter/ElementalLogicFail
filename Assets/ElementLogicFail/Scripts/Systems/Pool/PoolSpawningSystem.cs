@@ -39,12 +39,43 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                 ComponentType.ReadWrite<PooledEntity>());
             using var poolEntities = poolQuery.ToEntityArray(Allocator.Temp);
 
-            foreach (var (buffer, spawner) in
-                     SystemAPI.Query<DynamicBuffer<ElementSpawnRequest>, RefRO<Components.Spawner.Spawner>>())
+            foreach (var (buffer, spawner, entity) in
+                     SystemAPI.Query<DynamicBuffer<ElementSpawnRequest>, RefRO<Components.Spawner.Spawner>>().WithEntityAccess())
             {
-                foreach (var request in buffer)
+                var spawnerRO = spawner.ValueRO;
+                for (int bufferIndex = 0; bufferIndex < buffer.Length; bufferIndex++)
                 {
-                    if (request.Type == spawner.ValueRO.Type)
+                    var request = buffer[bufferIndex];
+                    if (request.Type != spawnerRO.Type)
+                    {
+                        return;
+                    }
+                    
+                    Entity poolEntity = Entity.Null;
+                    for (int poolIndex = 0; poolIndex < poolEntities.Length; poolIndex++)
+                    {
+                        var poolEnt =  poolEntities[poolIndex];
+                        var pool = state.EntityManager.GetComponentData<ElementPool>(poolEntity);
+                        if (pool.Prefab == spawnerRO.ElementPrefab)
+                        {
+                            poolEntity = poolEnt;
+                            break;
+                        }
+                    }
+                    
+                    Entity instance = Entity.Null;
+                    if (poolEntity != Entity.Null)
+                    {
+                        var pooledBuffer = state.EntityManager.GetBuffer<PooledEntity>(poolEntity);
+                        if (pooledBuffer.Length > 0)
+                        {
+                            instance = pooledBuffer[^1].Value;
+                            pooledBuffer.RemoveAt(pooledBuffer.Length - 1);
+                            entityCommandBuffer.SetComponentEnabled<ElementPooled>(instance, true);
+                        }
+                    }
+
+                    if (instance == Entity.Null)
                     {
                         var rand = new Random((uint)UnityEngine.Random.Range(1, int.MaxValue));
                         var newEntity = entityCommandBuffer.Instantiate(spawner.ValueRO.ElementPrefab);
@@ -63,7 +94,7 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                     }
                 }
 
-                buffer.Clear();
+                entityCommandBuffer.SetBuffer<ElementSpawnRequest>(entity).Clear();
             }
         }
 

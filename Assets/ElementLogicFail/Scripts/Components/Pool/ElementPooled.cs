@@ -2,8 +2,8 @@
 
 namespace ElementLogicFail.Scripts.Components.Pool
 {
-    public struct PooledEntity : IBufferElementData 
+    public class ElementPooled : IComponentData, IEnableableComponent
     {
-        public Entity Value;
+        
     }
 }

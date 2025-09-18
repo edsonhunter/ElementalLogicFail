@@ -33,7 +33,8 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                 for (int index = 0; index < pool.ValueRO.InitialSize; index++)
                 {
                     Entity newInstance = entityCommandBuffer.Instantiate(pool.ValueRO.Prefab);
-                    entityCommandBuffer.SetComponentEnabled<PooledEntity>(newInstance, true);
+                    entityCommandBuffer.AddComponent(newInstance, new ElementPooled());
+                    entityCommandBuffer.SetComponentEnabled<ElementPooled>(newInstance, false);
                     buffer.Add(new PooledEntity
                     {
                         Value = newInstance
