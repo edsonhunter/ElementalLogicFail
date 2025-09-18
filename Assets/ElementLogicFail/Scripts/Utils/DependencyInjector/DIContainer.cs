@@ -9,10 +9,10 @@ namespace ElementLogicFail.Scripts.Utils
     {
         private const BindingFlags InstanceBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
         private readonly Dictionary<Type, object> instanceMap = new Dictionary<Type, object>();
-        
+
         public DIContainer()
         {
-            instanceMap[typeof(DIContainer)] = this;    
+            instanceMap[typeof(DIContainer)] = this;
         }
 
         public void Register<T>(T instance)
@@ -21,7 +21,7 @@ namespace ElementLogicFail.Scripts.Utils
             {
                 throw new ArgumentNullException(nameof(instance));
             }
-            
+
             instanceMap[typeof(T)] = instance;
         }
 
@@ -30,6 +30,24 @@ namespace ElementLogicFail.Scripts.Utils
             foreach (var instance in instanceMap.Values)
             {
                 Inject(instance);
+            }
+        }
+
+        public T Get<T>()
+        {
+            try
+            {
+                return (T)instanceMap[typeof(T)];
+            }
+            catch (KeyNotFoundException e)
+            {
+                if (typeof(T).IsInterface)
+                {
+                    throw new KeyNotFoundException(
+                        $"The type '{typeof(T).FullName}' was not registered in the DI container.");
+                }
+
+                throw new KeyNotFoundException($"The type '{typeof(T).FullName}' is not an interface.");
             }
         }
 
