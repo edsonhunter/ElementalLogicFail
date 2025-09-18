@@ -4,6 +4,7 @@ using ElementLogicFail.Scripts.Components.Spawner;
 using ElementLogicFail.Scripts.Systems.Collision;
 using ElementLogicFail.Scripts.Tests.Editor;
 using NUnit.Framework;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -12,19 +13,19 @@ using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Tests.Systems
 {
-    [TestFixture]
-    public class CollisionSystemTest :  ECSTestFixture
+    public class CollisionSystemTest : ECSTestFixture
     {
-        [TestCase(1,1,0,0, true, TestName = "Collide between same elements with no cooldown")]
-        [TestCase(1,2,0,0, false, TestName = "No Collide between different elements")]
-        public void CollisionSystem_AddSpawnRequest(int elementA, int elementB, int cooldownA, int cooldownB, bool collision)
+        [TestCase(1, 1, 0, 0, true, TestName = "Collide between same elements with no cooldown")]
+        [TestCase(1, 2, 0, 0, false, TestName = "No Collide between different elements")]
+        public void CollisionSystem_AddSpawnRequest(int elementA, int elementB, int cooldownA, int cooldownB,
+            bool collision)
         {
             PhysicsSystemGroup simulationSystem = World.GetOrCreateSystemManaged<PhysicsSystemGroup>();
             var entitySimulationCommandBufferSystem =
                 World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             EntityManager entityManager = entitySimulationCommandBufferSystem.EntityManager;
             SystemHandle collisionSystem = World.CreateSystem<CollisionSystem>();
-            
+
             var spawnerEntity = entityManager.CreateEntity(
                 typeof(SpawnerRegistry),
                 typeof(ElementSpawnRequest)
@@ -34,17 +35,17 @@ namespace ElementLogicFail.Scripts.Tests.Systems
                 Type = (ElementType)elementA,
                 SpawnerEntity = spawnerEntity
             });
-            
+
             var entityA = entityManager.CreateEntity(
                 typeof(LocalTransform),
                 typeof(PhysicsCollider),
                 typeof(PhysicsVelocity),
                 typeof(ElementData));
-            
+
             var capsule = CapsuleCollider.Create(
-                new CapsuleGeometry { Vertex0 = float3.zero, Vertex1 = new float3(0,1,0), Radius = 0.5f });
-            
-            entityManager.SetComponentData(entityA, new LocalTransform { Position = new float3(0,0,0), Scale = 1 });
+                new CapsuleGeometry { Vertex0 = float3.zero, Vertex1 = new float3(0, 1, 0), Radius = 0.5f });
+
+            entityManager.SetComponentData(entityA, new LocalTransform { Position = new float3(0, 0, 0), Scale = 1 });
             entityManager.SetComponentData(entityA, new PhysicsCollider { Value = capsule });
             entityManager.SetComponentData(entityA, EntityTest.CreateElementData((ElementType)elementA, 2, cooldownA));
 
@@ -53,17 +54,20 @@ namespace ElementLogicFail.Scripts.Tests.Systems
                 typeof(PhysicsCollider),
                 typeof(PhysicsVelocity),
                 typeof(ElementData));
-            
-            entityManager.SetComponentData(entityB, new LocalTransform { Position = new float3(0.1f,0,0), Scale = 1 });
+
+            entityManager.SetComponentData(entityB,
+                new LocalTransform { Position = new float3(0.1f, 0, 0), Scale = 1 });
             entityManager.SetComponentData(entityB, new PhysicsCollider { Value = capsule });
             entityManager.SetComponentData(entityB, EntityTest.CreateElementData((ElementType)elementB, 2, cooldownB));
-            
+
             simulationSystem.Update();
             collisionSystem.Update(World.Unmanaged);
-            World.Unmanaged.GetExistingSystemState<SimulationSystemGroup>().Dependency.Complete();
             entitySimulationCommandBufferSystem.Update();
-            
-            BufferLookup<ElementSpawnRequest> buffer = entitySimulationCommandBufferSystem.GetBufferLookup<ElementSpawnRequest>(true);
+
+            entityManager.CompleteAllTrackedJobs();
+
+            BufferLookup<ElementSpawnRequest> buffer =
+                entitySimulationCommandBufferSystem.GetBufferLookup<ElementSpawnRequest>(true);
             Assert.AreEqual(collision, buffer[spawnerEntity].Length >= 1);
         }
     }
