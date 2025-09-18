@@ -39,3 +39,5 @@
 17/09
 - I have the intention to create the core architecture for the project
 - The main tasks I'll try to reach today will be dependency injector for GameServices, SceneManager, Loader, and everything except the game design.
+- Ended up not doing the main structure for the project.
+- I've tried to add a pooling system to reutilize the objects but the boiler plate + completixy skyrocket.
