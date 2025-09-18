@@ -150,7 +150,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ElementLogicFail.Scripts.Authoring.Spawner.SpawnerAuthoring
   type: 1
   prefab: {fileID: 5117180317900934959, guid: 1f29100832feed640a3ee66563718cb5, type: 3}
-  spawnRate: 1
+  spawnRate: 20
 --- !u!4 &496306361
 Transform:
   m_ObjectHideFlags: 0
@@ -197,7 +197,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ElementLogicFail.Scripts.Authoring.Spawner.SpawnerAuthoring
   type: 2
   prefab: {fileID: 5117180317900934959, guid: c5e4a1db8da1d9c4c86eea78e81117be, type: 3}
-  spawnRate: 1
+  spawnRate: 20
 --- !u!4 &596508302
 Transform:
   m_ObjectHideFlags: 0
@@ -244,7 +244,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ElementLogicFail.Scripts.Authoring.Spawner.SpawnerAuthoring
   type: 0
   prefab: {fileID: 5117180317900934959, guid: cbd62107221a1f2498e644eb7c71c020, type: 3}
-  spawnRate: 1
+  spawnRate: 20
 --- !u!4 &708016460
 Transform:
   m_ObjectHideFlags: 0
@@ -591,7 +591,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ElementLogicFail.Scripts.Authoring.Spawner.SpawnerAuthoring
   type: 3
   prefab: {fileID: 5117180317900934959, guid: 2070eba2ec008844a9d121ce16250d3f, type: 3}
-  spawnRate: 1
+  spawnRate: 20
 --- !u!4 &1853416372
 Transform:
   m_ObjectHideFlags: 0
