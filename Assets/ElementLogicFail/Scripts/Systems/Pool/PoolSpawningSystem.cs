@@ -1,20 +1,23 @@
 ﻿using ElementLogicFail.Scripts.Components.Bounds;
 using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Pool;
 using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Systems.Collision;
+using ElementLogicFail.Scripts.Systems.Spawner;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
 
-namespace ElementLogicFail.Scripts.Systems.Spawner
+namespace ElementLogicFail.Scripts.Systems.Pool
 {
     [BurstCompile]
     [UpdateInGroup(typeof(PhysicsSystemGroup))]
     [UpdateAfter(typeof(SpawnerSystem))]
     [UpdateAfter(typeof(CollisionSystem))]
-    public partial struct SpawnExecutionSystem : ISystem
+    public partial struct PoolSpawningSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -31,7 +34,11 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             EntityCommandBuffer entityCommandBuffer =
                 entitySimulationCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged);
-            
+
+            var poolQuery = state.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ElementPool>(),
+                ComponentType.ReadWrite<PooledEntity>());
+            using var poolEntities = poolQuery.ToEntityArray(Allocator.Temp);
+
             foreach (var (buffer, spawner) in
                      SystemAPI.Query<DynamicBuffer<ElementSpawnRequest>, RefRO<Components.Spawner.Spawner>>())
             {
