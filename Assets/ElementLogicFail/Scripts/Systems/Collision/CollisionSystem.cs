@@ -1,4 +1,5 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Pool;
 using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Burst;
@@ -127,8 +128,10 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             }
             else
             {
-                EntityCommandBuffer.DestroyEntity(0, a);
-                EntityCommandBuffer.DestroyEntity(0, b);
+                EntityCommandBuffer.AddComponent(0, a, new ReturnToPool());
+                EntityCommandBuffer.SetComponentEnabled<ReturnToPool>(0, a, false);
+                EntityCommandBuffer.AddComponent(0, b, new ReturnToPool());
+                EntityCommandBuffer.SetComponentEnabled<ReturnToPool>(0, b, false);
             }
         }
     }
