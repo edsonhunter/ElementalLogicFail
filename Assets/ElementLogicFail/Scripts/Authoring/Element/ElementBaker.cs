@@ -1,7 +1,6 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Authoring.Element
 {

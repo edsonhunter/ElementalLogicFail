@@ -2,7 +2,7 @@
 
 namespace ElementLogicFail.Scripts.Components.Pool
 {
-    public class ElementPooled : IComponentData, IEnableableComponent
+    public struct PoolTag : IComponentData, IEnableableComponent
     {
         
     }

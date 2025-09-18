@@ -2,7 +2,6 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Systems.Pool
 {
@@ -13,7 +12,6 @@ namespace ElementLogicFail.Scripts.Systems.Pool
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            
         }
 
         [BurstCompile]
@@ -28,19 +26,21 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                     entityCommandBuffer.AddBuffer<PooledEntity>(entity);
                 }
 
-                var buffer = entityCommandBuffer.SetBuffer<PooledEntity>(entity);
+                int initialSize = pool.ValueRO.InitialSize;
+                Entity prefab = pool.ValueRO.Prefab;
 
-                for (int index = 0; index < pool.ValueRO.InitialSize; index++)
+                for (int i = 0; i < initialSize; i++)
                 {
-                    Entity newInstance = entityCommandBuffer.Instantiate(pool.ValueRO.Prefab);
-                    entityCommandBuffer.AddComponent(newInstance, new ElementPooled());
-                    entityCommandBuffer.SetComponentEnabled<ElementPooled>(newInstance, false);
-                    buffer.Add(new PooledEntity
+                    var newInstance = entityCommandBuffer.Instantiate(prefab);
+                    entityCommandBuffer.AddComponent(newInstance, new PoolTag());
+                    entityCommandBuffer.SetComponentEnabled<PoolTag>(newInstance, false);
+                    entityCommandBuffer.AppendToBuffer(entity, new PooledEntity
                     {
                         Value = newInstance
                     });
                 }
             }
+
             entityCommandBuffer.Playback(state.EntityManager);
             entityCommandBuffer.Dispose();
         }
@@ -48,7 +48,6 @@ namespace ElementLogicFail.Scripts.Systems.Pool
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-
         }
     }
 }
