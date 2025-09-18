@@ -24,8 +24,7 @@ namespace ElementLogicFail.Scripts.Tests.Systems
             var entitySimulationCommandBufferSystem =
                 World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             EntityManager entityManager = entitySimulationCommandBufferSystem.EntityManager;
-            SystemHandle collisionSystem = World.CreateSystem<CollisionSystem>();
-
+            
             var spawnerEntity = entityManager.CreateEntity(
                 typeof(SpawnerRegistry),
                 typeof(ElementSpawnRequest)
@@ -60,6 +59,7 @@ namespace ElementLogicFail.Scripts.Tests.Systems
             entityManager.SetComponentData(entityB, new PhysicsCollider { Value = capsule });
             entityManager.SetComponentData(entityB, EntityTest.CreateElementData((ElementType)elementB, 2, cooldownB));
 
+            SystemHandle collisionSystem = World.CreateSystem<CollisionSystem>();
             simulationSystem.Update();
             collisionSystem.Update(World.Unmanaged);
             entitySimulationCommandBufferSystem.Update();
