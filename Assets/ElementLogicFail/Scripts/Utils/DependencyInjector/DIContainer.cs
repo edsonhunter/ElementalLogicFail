@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using ElementLogicFail.Scripts.Utils.DependencyInjector;
 
-namespace ElementLogicFail.Scripts.Utils
+namespace ElementLogicFail.Scripts.Utils.DependencyInjector
 {
     public class DIContainer
     {

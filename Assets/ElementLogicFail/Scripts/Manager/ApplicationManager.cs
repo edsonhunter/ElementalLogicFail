@@ -2,6 +2,7 @@
 using ElementLogicFail.Scripts.Manager.Interface;
 using ElementLogicFail.Scripts.Services.Interface;
 using ElementLogicFail.Scripts.Utils;
+using ElementLogicFail.Scripts.Utils.DependencyInjector;
 using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Manager
