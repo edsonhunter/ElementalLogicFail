@@ -41,3 +41,15 @@
 - The main tasks I'll try to reach today will be dependency injector for GameServices, SceneManager, Loader, and everything except the game design.
 - Ended up not doing the main structure for the project.
 - I've tried to add a pooling system to reutilize the objects but the boiler plate + completixy skyrocket.
+- Refactor UnitTest to reflect the changes in Collision and PoolSystem
+
+18/09
+- Add the core structure to the project
+- Create the applicationManager and the dependency injector container
+- Apply more fixes to the pooling system
+
+19/08
+- Finished the main structure for the project
+- Fixed and finalized the PoolSystem for element prefabs
+- Created and finished the particle systems
+- Added more tests to embrace the new systems
