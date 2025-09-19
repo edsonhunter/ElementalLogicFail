@@ -1,4 +1,5 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Particles;
 using ElementLogicFail.Scripts.Components.Pool;
 using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Components.Spawner;
@@ -20,6 +21,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         private ComponentLookup<ElementData> _elementLookup;
         private ComponentLookup<LocalTransform> _localTransformLookup;
         private ComponentLookup<SpawnerRegistry> _spawnerRegistryLookup;
+        private ComponentLookup<ParticlePrefabs>  _particlePrefabLookup;
         
         private NativeParallelHashMap<int, Entity> _typeToSpawnerMap;
         [BurstCompile]
@@ -31,6 +33,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             _elementLookup = SystemAPI.GetComponentLookup<ElementData>(true);
             _localTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
             _spawnerRegistryLookup = SystemAPI.GetComponentLookup<SpawnerRegistry>(true);
+            _particlePrefabLookup = SystemAPI.GetComponentLookup<ParticlePrefabs>(true);
             
             _typeToSpawnerMap = new NativeParallelHashMap<int, Entity>(16, Allocator.Persistent);
         }
@@ -41,6 +44,11 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             _elementLookup.Update(ref state);
             _localTransformLookup.Update(ref state);
             _spawnerRegistryLookup.Update(ref state);
+            _particlePrefabLookup.Update(ref state);
+
+            var particleManagerQuery = SystemAPI.QueryBuilder().WithAll<ParticlePrefabs>().Build();
+            var particleManagerEntity = particleManagerQuery.GetSingletonEntity();
+            var particlePrefabLookup = SystemAPI.GetComponentLookup<ParticlePrefabs>(true);
             
             _typeToSpawnerMap.Clear();
             foreach (var (registry, entity) in SystemAPI.Query<RefRO<SpawnerRegistry>>().WithEntityAccess())
@@ -57,6 +65,8 @@ namespace ElementLogicFail.Scripts.Systems.Collision
                 ElementLookup = _elementLookup,
                 LocalTransformLookup = _localTransformLookup,
                 TypeToSpawnerMap = _typeToSpawnerMap,
+                ParticlePrefabLookup = particlePrefabLookup,
+                ParticleManagerEntity = particleManagerEntity,
                 EntityCommandBuffer = parallelWriter,
             };
             
@@ -76,6 +86,8 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         [ReadOnly] public ComponentLookup<ElementData> ElementLookup;
         [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
         [ReadOnly] public NativeParallelHashMap<int, Entity>  TypeToSpawnerMap;
+        [ReadOnly] public ComponentLookup<ParticlePrefabs> ParticlePrefabLookup;
+        [ReadOnly] public Entity ParticleManagerEntity;
         
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
 
@@ -92,14 +104,15 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             var dataA = ElementLookup[a];
             var dataB = ElementLookup[b];
 
+            float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
+            var particlePrefabs = ParticlePrefabLookup[ParticleManagerEntity];
+            
             if (dataA.Type == dataB.Type)
             {
                 if (dataA.Cooldown > 0f || dataB.Cooldown > 0f)
                 {
                     return;
                 }
-                float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
-                
                 if (TypeToSpawnerMap.TryGetValue((int)dataA.Type, out var spawnerEntity))
                 {
                     EntityCommandBuffer.SetComponent(0, a, new ElementData
@@ -124,12 +137,24 @@ namespace ElementLogicFail.Scripts.Systems.Collision
                         Type = dataA.Type,
                         Position = position
                     });
+                    EntityCommandBuffer.AppendToBuffer(0, ParticleManagerEntity, new ParticleSpawnRequest
+                    {
+                        Prefab =  particlePrefabs.CreationEffect,
+                        Position = position,
+                        Count = 5
+                    });
                 }
             }
             else
             {
                 EntityCommandBuffer.AddComponent(0, a, new ReturnToPool());
                 EntityCommandBuffer.AddComponent(0, b, new ReturnToPool());
+                EntityCommandBuffer.AppendToBuffer(0, ParticleManagerEntity, new ParticleSpawnRequest
+                {
+                    Prefab = particlePrefabs.ExplosionEffect,
+                    Position = position,
+                    Count = 5
+                });
             }
         }
     }
