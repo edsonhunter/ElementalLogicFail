@@ -7,7 +7,7 @@ namespace ElementLogicFail.Scripts.Scenes
     {
         protected override void Loaded()
         {
-            Debug.Log("Loader Load Complete");
+            Debug.Log("Main Menu Load Complete");
         }
     }
     

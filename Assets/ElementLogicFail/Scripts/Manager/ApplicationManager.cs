@@ -1,7 +1,6 @@
 ﻿using System;
 using ElementLogicFail.Scripts.Manager.Interface;
 using ElementLogicFail.Scripts.Services.Interface;
-using ElementLogicFail.Scripts.Utils;
 using ElementLogicFail.Scripts.Utils.DependencyInjector;
 using UnityEngine;
 
@@ -9,17 +8,17 @@ namespace ElementLogicFail.Scripts.Manager
 {
     public class ApplicationManager : MonoBehaviour, IApplication
     {
-        private DIContainer Services;
-        private DIContainer Managers;
+        private DIContainer _services;
+        private DIContainer _managers;
         
         public T GetService<T>() where T : IService
         {
-            return Services.Get<T>();
+            return _services.Get<T>();
         }
 
         public T GetManager<T>() where T : IManager
         {
-            return Managers.Get<T>();
+            return _managers.Get<T>();
         }
 
         private void RegisterServices<T>(IService service) where T : IService
@@ -29,7 +28,7 @@ namespace ElementLogicFail.Scripts.Manager
                 throw new InvalidOperationException($"Cannot register service {service.GetType().FullName} into the interface {typeof(T).FullName}");
             }
             
-            Services.Register(service);
+            _services.Register(service);
         }
 
         private void RegisterManager<T>(IManager manager) where T : IManager
@@ -39,13 +38,13 @@ namespace ElementLogicFail.Scripts.Manager
                 throw new InvalidOperationException($"Cannot register manager {manager.GetType().FullName} into the interface {typeof(T).FullName}");
             }
             
-            Managers.Register(manager);
+            _managers.Register(manager);
         }
 
         private void Awake()
         {
-            Services = new DIContainer();
-            Managers = new DIContainer();
+            _services = new DIContainer();
+            _managers = new DIContainer();
             DontDestroyOnLoad(this);
         }
     }

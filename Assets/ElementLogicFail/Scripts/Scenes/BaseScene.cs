@@ -30,8 +30,8 @@ namespace ElementLogicFail.Scripts.Scenes
         {
             this.AssertForbiddenMethods("Start", "Awake", "Update");
         }
-        
         #endif
+        
         public async Task FireLoading()
         {
             await Loading();

@@ -22,6 +22,7 @@ namespace ElementLogicFail.Scripts.Utils
                 {
                     throw new InvalidOperationException($"Method '{methodName}' on '{type.Name}' is not allowed.");
                 }
+                type = type.BaseType;
             }
         }
     }
