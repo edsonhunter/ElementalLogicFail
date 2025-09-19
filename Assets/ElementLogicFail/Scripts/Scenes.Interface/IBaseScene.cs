@@ -4,7 +4,7 @@ namespace ElementLogicFail.Scripts.Scenes.Interface
 {
     public interface IBaseScene
     {
-        bool isActiveScene { get; }
+        bool IsActiveScene { get; }
         public Task FireLoading();
         public void FireLoaded();
         public void FireLoop();

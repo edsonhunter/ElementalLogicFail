@@ -14,7 +14,7 @@ namespace ElementLogicFail.Scripts.Scenes
     
     public abstract class BaseScene : MonoBehaviour, IBaseScene
     {
-        public bool isActiveScene { get; private set; }
+        public bool IsActiveScene { get; private set; }
         
         internal ISceneData SceneData;
         internal IApplication Application;
@@ -52,7 +52,7 @@ namespace ElementLogicFail.Scripts.Scenes
         
         public void SetActiveScene(bool activeScene)
         {
-            isActiveScene = activeScene;
+            IsActiveScene = activeScene;
         }
 
         protected T GetService<T>() where T : IService
