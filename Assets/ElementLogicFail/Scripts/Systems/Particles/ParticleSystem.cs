@@ -23,7 +23,8 @@ namespace ElementLogicFail.Scripts.Systems.Particles
                 SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             EntityCommandBuffer entityCommandBuffer = entitySimulationCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (request, entity) in SystemAPI.Query<DynamicBuffer<ParticleSpawnRequest>>().WithEntityAccess())
+            foreach (var (request, entity) in SystemAPI
+                         .Query<DynamicBuffer<ParticleSpawnRequest>>().WithEntityAccess())
             {
                 foreach (var spawnRequest in request)
                 {
