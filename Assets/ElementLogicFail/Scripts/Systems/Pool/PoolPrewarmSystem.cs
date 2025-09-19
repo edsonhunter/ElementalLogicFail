@@ -21,6 +21,9 @@ namespace ElementLogicFail.Scripts.Systems.Pool
 
             foreach (var (pool, entity) in SystemAPI.Query<RefRO<ElementPool>>().WithEntityAccess())
             {
+                if (state.EntityManager.HasComponent<Prewarmed>(entity))
+                    continue;
+
                 if (!state.EntityManager.HasBuffer<PooledEntity>(entity))
                 {
                     entityCommandBuffer.AddBuffer<PooledEntity>(entity);
@@ -39,6 +42,8 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                         Value = newInstance
                     });
                 }
+
+                entityCommandBuffer.AddComponent<Prewarmed>(entity);
             }
 
             entityCommandBuffer.Playback(state.EntityManager);

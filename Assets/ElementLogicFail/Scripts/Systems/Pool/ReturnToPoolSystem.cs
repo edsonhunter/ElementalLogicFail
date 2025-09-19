@@ -4,25 +4,31 @@ using Unity.Android.Gradle;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Physics.Systems;
 
 namespace ElementLogicFail.Scripts.Systems.Pool
 {
     
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
     public partial struct ReturnToPoolSystem : ISystem
     {
+        private NativeParallelHashMap<int, Entity> _typeToPool;
+        
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ElementPool>();
+            _typeToPool = new NativeParallelHashMap<int, Entity>(16, Allocator.Persistent);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            
+            _typeToPool.Clear();
+            
             var entityCommandBuffer = new EntityCommandBuffer(Allocator.Temp);
-            var typeToPool = new NativeParallelHashMap<int, Entity>(16, Allocator.Temp);
             var poolQuery = SystemAPI.QueryBuilder().WithAll<ElementPool>().Build();
 
             using (var poolEntities = poolQuery.ToEntityArray(Allocator.TempJob))
@@ -30,20 +36,21 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                 foreach (var entity in poolEntities)
                 {
                     var pool = state.EntityManager.GetComponentData<ElementPool>(entity);
-                    if (!typeToPool.ContainsKey(pool.ElementType))
+                    if (!_typeToPool.ContainsKey(pool.ElementType))
                     {
-                        typeToPool.Add(pool.ElementType, entity);
+                        _typeToPool.Add(pool.ElementType, entity);
                     }
                 }
-                
+
                 var returnQuery = SystemAPI.QueryBuilder().WithAll<ReturnToPool>().Build();
                 using (var returnEntities = returnQuery.ToEntityArray(Allocator.Temp))
                 {
                     foreach (var returnEntity in returnEntities)
                     {
                         var data = state.EntityManager.GetComponentData<ElementData>(returnEntity);
-                        if (typeToPool.TryGetValue((int)data.Type, out var poolEntity))
+                        if (_typeToPool.TryGetValue((int)data.Type, out var poolEntity))
                         {
+                            entityCommandBuffer.SetComponentEnabled<PoolTag>(returnEntity, false);
                             entityCommandBuffer.AppendToBuffer(poolEntity, new PooledEntity
                             {
                                 Value = returnEntity
@@ -56,7 +63,7 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                     }
                 }
             }
-            typeToPool.Dispose();
+
             entityCommandBuffer.Playback(state.EntityManager);
             entityCommandBuffer.Dispose();
         }
@@ -64,7 +71,8 @@ namespace ElementLogicFail.Scripts.Systems.Pool
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-
+            if (_typeToPool.IsCreated)
+                _typeToPool.Dispose();
         }
     }
 }
