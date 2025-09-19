@@ -1,4 +1,5 @@
 ﻿using ElementLogicFail.Scripts.Components.Particles;
+using ElementLogicFail.Scripts.Components.Request;
 using Unity.Entities;
 
 namespace ElementLogicFail.Scripts.Authoring.Particles
@@ -13,6 +14,8 @@ namespace ElementLogicFail.Scripts.Authoring.Particles
                 CreationEffect =  GetEntity(authoring.creationEffect, TransformUsageFlags.Dynamic),
                 ExplosionEffect = GetEntity(authoring.explosionEffect, TransformUsageFlags.Dynamic)
             });
+            
+            AddBuffer<ParticleSpawnRequest>(entity);
         }
     }
 }
