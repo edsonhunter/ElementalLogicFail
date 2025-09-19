@@ -86,7 +86,7 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                                 Target = new float3(
                                     rand.NextFloat(area.MinArea.x, area.MaxArea.x),
                                     0,
-                                    rand.NextFloat(area.MaxArea.z, area.MaxArea.z)),
+                                    rand.NextFloat(area.MinArea.z, area.MaxArea.z)),
                                 RandomSeed = rand.NextUInt(),
                                 Cooldown = 2f
                             });

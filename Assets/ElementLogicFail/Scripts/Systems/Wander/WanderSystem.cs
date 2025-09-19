@@ -4,6 +4,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Random = Unity.Mathematics.Random;
 
 namespace ElementLogicFail.Scripts.Systems.Wander
 {
@@ -29,7 +30,8 @@ namespace ElementLogicFail.Scripts.Systems.Wander
 
                 if (math.distance(transformRW.Position, elementRW.Target) < 0.2f)
                 {
-                    var rand = new Unity.Mathematics.Random(elementRW.RandomSeed = elementRW.RandomSeed * 1664525u + 1013904223u);
+                    elementRW.RandomSeed = elementRW.RandomSeed * 1664525u + 1013904223u;
+                    var rand = new Random(elementRW.RandomSeed);
                     elementRW.Target = new float3(
                         rand.NextFloat(area.MinArea.x, area.MaxArea.x),
                         0,

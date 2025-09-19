@@ -108,7 +108,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
                         Speed = dataA.Speed,
                         RandomSeed = dataA.RandomSeed,
                         Target = dataA.Target,
-                        Cooldown = 10f,
+                        Cooldown = 2f,
                     });
                     EntityCommandBuffer.SetComponent(0, b, new ElementData
                     {
