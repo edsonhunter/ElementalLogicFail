@@ -91,7 +91,7 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                                 Cooldown = 2f
                             });
 
-                            entityCommandBuffer.SetComponentEnabled<PoolTag>(instance, true);
+                            entityCommandBuffer.RemoveComponent<Disabled>(instance);
                         }
                         else
                         {

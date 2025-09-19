@@ -50,7 +50,7 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                         var data = state.EntityManager.GetComponentData<ElementData>(returnEntity);
                         if (_typeToPool.TryGetValue((int)data.Type, out var poolEntity))
                         {
-                            entityCommandBuffer.SetComponentEnabled<PoolTag>(returnEntity, false);
+                            entityCommandBuffer.AddComponent<Disabled>(returnEntities);
                             entityCommandBuffer.AppendToBuffer(poolEntity, new PooledEntity
                             {
                                 Value = returnEntity
@@ -60,6 +60,7 @@ namespace ElementLogicFail.Scripts.Systems.Pool
                         {
                             entityCommandBuffer.DestroyEntity(returnEntity);
                         }
+                        entityCommandBuffer.RemoveComponent<ReturnToPool>(returnEntity);
                     }
                 }
             }

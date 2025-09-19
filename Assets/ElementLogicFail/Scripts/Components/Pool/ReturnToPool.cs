@@ -2,7 +2,7 @@
 
 namespace ElementLogicFail.Scripts.Components.Pool
 {
-    public struct ReturnToPool : IComponentData, IEnableableComponent
+    public struct ReturnToPool : IComponentData
     {
          
     }

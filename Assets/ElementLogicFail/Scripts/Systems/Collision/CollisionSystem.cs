@@ -129,9 +129,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             else
             {
                 EntityCommandBuffer.AddComponent(0, a, new ReturnToPool());
-                EntityCommandBuffer.SetComponentEnabled<ReturnToPool>(0, a, false);
                 EntityCommandBuffer.AddComponent(0, b, new ReturnToPool());
-                EntityCommandBuffer.SetComponentEnabled<ReturnToPool>(0, b, false);
             }
         }
     }
