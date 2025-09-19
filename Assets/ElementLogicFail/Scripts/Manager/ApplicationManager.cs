@@ -21,7 +21,7 @@ namespace ElementLogicFail.Scripts.Manager
             return _managers.Get<T>();
         }
 
-        private void RegisterServices<T>(IService service) where T : IService
+        public void RegisterServices<T>(IService service) where T : IService
         {
             if(!(service is T))
             {
@@ -31,7 +31,7 @@ namespace ElementLogicFail.Scripts.Manager
             _services.Register(service);
         }
 
-        private void RegisterManager<T>(IManager manager) where T : IManager
+        public void RegisterManager<T>(IManager manager) where T : IManager
         {
             if (!(manager is T))
             {

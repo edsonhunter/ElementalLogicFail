@@ -12,21 +12,12 @@ namespace ElementLogicFail.Scripts.Manager
     {
         private BaseScene _activeScene;
         private IApplication _application;
-
+        
         public SceneManager(IApplication application)
         {
             _application = application;
         }
-
-        private void SetupSceneToLoad()
-        {
-            if (_activeScene != null)
-            {
-                _activeScene.SetActiveScene(false);
-                _activeScene.FireUnload();
-            }
-        }
-
+        
         public void LoadScene(ISceneData data)
         {
             SetupSceneToLoad();
@@ -88,6 +79,20 @@ namespace ElementLogicFail.Scripts.Manager
 
             throw new InvalidOperationException(
                 $"Cannot have a scene without a game object with component {nameof(BaseScene)}.");
+        }
+
+        public void StartFirstScene(ISceneData data)
+        {
+            LoadScene(data);
+        }
+        
+        private void SetupSceneToLoad()
+        {
+            if (_activeScene != null)
+            {
+                _activeScene.SetActiveScene(false);
+                _activeScene.FireUnload();
+            }
         }
 
         private void SetLastLoadedSceneActive()
