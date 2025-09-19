@@ -6,7 +6,7 @@ namespace ElementLogicFail.Scripts.Utils.DependencyInjector
 {
     public class DIContainer
     {
-        private const BindingFlags InstanceBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
+        private const BindingFlags InstanceBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public ;
         private readonly Dictionary<Type, object> instanceMap = new Dictionary<Type, object>();
 
         public DIContainer()

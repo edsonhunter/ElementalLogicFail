@@ -6,8 +6,20 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/ElementLogicFail/Scenes/SampleScene.unity
+    path: Assets/ElementLogicFail/Scenes/Bootstrapper.unity
+    guid: 460a51d19490c8945b323b5fb53fa268
+  - enabled: 1
+    path: Assets/ElementLogicFail/Scenes/LoaderScene.unity
+    guid: acf583316714438419a02ffe5b2f88b5
+  - enabled: 1
+    path: Assets/ElementLogicFail/Scenes/MainMenuScene.unity
+    guid: ab99bc68de3e0574080c87dfb1e79509
+  - enabled: 1
+    path: Assets/ElementLogicFail/Scenes/GameplayScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/ElementLogicFail/Scenes/ConfigScene.unity
+    guid: 6476190a37633c74283f5eb61958cd87
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

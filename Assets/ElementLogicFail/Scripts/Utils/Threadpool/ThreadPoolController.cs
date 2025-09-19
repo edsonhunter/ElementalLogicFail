@@ -14,6 +14,11 @@ namespace ElementLogicFail.Scripts.Utils.Threadpool
         private IList<ThreadManagerTask> _tasks = new List<ThreadManagerTask>();
         private object _lock = new();
 
+        private void Awake()
+        {
+            name = nameof(ThreadPoolController);
+        }
+
         private void Start()
         {
             DontDestroyOnLoad(this);

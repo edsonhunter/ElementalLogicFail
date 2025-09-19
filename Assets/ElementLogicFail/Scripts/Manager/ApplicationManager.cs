@@ -27,8 +27,8 @@ namespace ElementLogicFail.Scripts.Manager
             {
                 throw new InvalidOperationException($"Cannot register service {service.GetType().FullName} into the interface {typeof(T).FullName}");
             }
-            
-            _services.Register(service);
+
+            _services.Register((T)service);
         }
 
         public void RegisterManager<T>(IManager manager) where T : IManager
@@ -37,15 +37,22 @@ namespace ElementLogicFail.Scripts.Manager
             {
                 throw new InvalidOperationException($"Cannot register manager {manager.GetType().FullName} into the interface {typeof(T).FullName}");
             }
-            
-            _managers.Register(manager);
+
+            _managers.Register((T)manager);
         }
 
         private void Awake()
         {
+            name = nameof(ApplicationManager);
             _services = new DIContainer();
             _managers = new DIContainer();
             DontDestroyOnLoad(this);
+        }
+
+        public void StartGame()
+        {
+            _managers.Resolve();
+            _services.Resolve();
         }
     }
 }

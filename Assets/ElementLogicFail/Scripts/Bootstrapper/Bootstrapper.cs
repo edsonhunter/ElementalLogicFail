@@ -14,8 +14,8 @@ namespace ElementLogicFail.Scripts.Bootstrapper
         {
             //Create applicationPrefab
             //Initialize applicationPrefab
-            SetupThreadPool();
             SetupApplication();
+            SetupThreadPool();
             SetupServices();
             SetupManagers();
             StartGame();
@@ -40,11 +40,13 @@ namespace ElementLogicFail.Scripts.Bootstrapper
         private void SetupManagers()
         {
             //Register all managers
+            
             _applicationManager.RegisterManager<ISceneManager>(new SceneManager(_applicationManager));
         }
 
         private void StartGame()
         {
+            _applicationManager.StartGame();
             _applicationManager.GetManager<ISceneManager>().LoadScene(new LoaderData());
         }
     }
