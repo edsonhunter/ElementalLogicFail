@@ -1,11 +1,8 @@
 ﻿using ElementLogicFail.Scripts.Components.Request;
-using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Burst;
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
-using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Systems.Spawner
 {

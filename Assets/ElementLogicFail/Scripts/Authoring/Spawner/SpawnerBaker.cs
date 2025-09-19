@@ -1,4 +1,5 @@
-﻿using Unity.Entities;
+﻿using ElementLogicFail.Scripts.Components.Pool;
+using Unity.Entities;
 using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Components.Spawner;
 
@@ -25,6 +26,14 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
                 Type = authoring.type,
                 SpawnerEntity = entity
             });
+            
+            AddComponent(entity, new ElementPool
+            {
+                ElementType = (int)authoring.type,
+                InitialSize = authoring.initialPoolSize,
+                Prefab = prefabEntity
+            });
+            
             AddBuffer<ElementSpawnRequest>(GetEntity(TransformUsageFlags.None));
         }
     }

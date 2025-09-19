@@ -8,5 +8,6 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
         public ElementType type;
         public GameObject prefab;
         public float spawnRate;
+        public int initialPoolSize;
     }
 }
