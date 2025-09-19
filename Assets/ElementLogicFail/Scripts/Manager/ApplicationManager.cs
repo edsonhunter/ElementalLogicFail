@@ -46,6 +46,7 @@ namespace ElementLogicFail.Scripts.Manager
         {
             Services = new DIContainer();
             Managers = new DIContainer();
+            DontDestroyOnLoad(this);
         }
     }
 }

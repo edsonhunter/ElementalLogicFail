@@ -1,6 +1,8 @@
-﻿namespace ElementLogicFail.Scripts.Manager
+﻿using ElementLogicFail.Scripts.Manager.Interface;
+
+namespace ElementLogicFail.Scripts.Manager
 {
-    public class LoadingManager
+    public class LoadingManager : ILoadingManager
     {
         
     }

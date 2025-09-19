@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using ElementLogicFail.Scripts.Manager.Interface;
 using ElementLogicFail.Scripts.Scenes.Interface;
 using ElementLogicFail.Scripts.Services.Interface;
+using ElementLogicFail.Scripts.Utils;
 using UnityEngine;
 
 namespace ElementLogicFail.Scripts.Scenes
@@ -23,7 +24,14 @@ namespace ElementLogicFail.Scripts.Scenes
         protected virtual void Loaded() { }
         protected virtual void Loop() { }
         protected virtual void Unload() { }
+
+        #if UNITY_EDITOR
+        public BaseScene()
+        {
+            this.AssertForbiddenMethods("Start", "Awake", "Update");
+        }
         
+        #endif
         public async Task FireLoading()
         {
             await Loading();
