@@ -2,7 +2,6 @@
     "name": "Elf.Services",
     "rootNamespace": "",
     "references": [
-        "GUID:98d3a33a2cbf2364bb29ed98f8caed68",
         "GUID:ae16def5701053d4a96410a5affe45d9",
         "GUID:ac88e0386a85820499113b11a72f611f",
         "GUID:4aa72c14fb6305141ab0bff877438337",
