@@ -106,7 +106,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ElementLogicFail.Scripts.Authoring.Element.ElementAuthoring
   Type: 2
   speed: 2
-  Cooldown: 10
+  Cooldown: 2
 --- !u!114 &-5054883385247339670
 MonoBehaviour:
   m_ObjectHideFlags: 0
