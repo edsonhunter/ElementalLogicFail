@@ -1,4 +1,5 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Particles;
 using ElementLogicFail.Scripts.Components.Pool;
 using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Components.Spawner;
@@ -42,6 +43,10 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             _localTransformLookup.Update(ref state);
             _spawnerRegistryLookup.Update(ref state);
             
+            var particleManagerQuery = SystemAPI.QueryBuilder().WithAll<ParticlePrefabs>().Build();
+            var particleManagerEntity = particleManagerQuery.GetSingletonEntity();
+            var particlePrefabLookup = SystemAPI.GetComponentLookup<ParticlePrefabs>(true);
+            
             _typeToSpawnerMap.Clear();
             foreach (var (registry, entity) in SystemAPI.Query<RefRO<SpawnerRegistry>>().WithEntityAccess())
             {
@@ -57,6 +62,8 @@ namespace ElementLogicFail.Scripts.Systems.Collision
                 ElementLookup = _elementLookup,
                 LocalTransformLookup = _localTransformLookup,
                 TypeToSpawnerMap = _typeToSpawnerMap,
+                ParticlePrefabLookup = particlePrefabLookup,
+                ParticleManagerEntity = particleManagerEntity,
                 EntityCommandBuffer = parallelWriter,
             };
             
@@ -76,6 +83,8 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         [ReadOnly] public ComponentLookup<ElementData> ElementLookup;
         [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
         [ReadOnly] public NativeParallelHashMap<int, Entity>  TypeToSpawnerMap;
+        [ReadOnly] public ComponentLookup<ParticlePrefabs> ParticlePrefabLookup;
+        [ReadOnly] public Entity ParticleManagerEntity;
         
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
 
