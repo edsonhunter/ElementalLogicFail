@@ -1,0 +1,22 @@
+{
+    "name": "Elf.Manager.Interface",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ac88e0386a85820499113b11a72f611f",
+        "GUID:ae16def5701053d4a96410a5affe45d9",
+        "GUID:da5fdf3d7c76a2940b32e2e9d5b8132b"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor",
+        "iOS"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

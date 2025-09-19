@@ -1,0 +1,21 @@
+{
+    "name": "Elf.Domain",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ac88e0386a85820499113b11a72f611f",
+        "GUID:796a04b6fda63e946a986ffad3c54062"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor",
+        "iOS"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,20 @@
+{
+    "name": "Elf.Services.Interface",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ac88e0386a85820499113b11a72f611f"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor",
+        "iOS"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

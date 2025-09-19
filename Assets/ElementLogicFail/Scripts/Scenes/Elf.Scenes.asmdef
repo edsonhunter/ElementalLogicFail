@@ -1,0 +1,24 @@
+{
+    "name": "Elf.Scenes",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ae16def5701053d4a96410a5affe45d9",
+        "GUID:98d3a33a2cbf2364bb29ed98f8caed68",
+        "GUID:ac88e0386a85820499113b11a72f611f",
+        "GUID:da5fdf3d7c76a2940b32e2e9d5b8132b",
+        "GUID:796a04b6fda63e946a986ffad3c54062"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor",
+        "iOS"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
