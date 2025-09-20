@@ -14,73 +14,74 @@ namespace ElementLogicFail.Scripts.Tests.Systems
 {
     public class CollisionSystemTest : ECSTestFixture
     {
-         [Test]
-        public void SameTypeCollision_WithNoCooldown_CreatesSpawnRequest()
+        private Entity _particleManager;
+        private Entity _spawnerEntity;
+
+        [SetUp]
+        public override void Setup()
         {
-            var spawnerEntity = EntityManager.CreateEntity(typeof(SpawnerRegistry), typeof(ElementSpawnRequest));
-            EntityManager.SetComponentData(spawnerEntity, new SpawnerRegistry { Type = ElementType.Fire, SpawnerEntity = spawnerEntity });
+            base.Setup();
             
+            _particleManager = EntityManager.CreateEntity(typeof(ParticlePrefabs), typeof(ParticleSpawnRequest));
+            EntityManager.SetComponentData(_particleManager, new ParticlePrefabs
+            {
+                CreationEffect = Entity.Null,
+                ExplosionEffect = Entity.Null
+            });
+
+            _spawnerEntity = EntityManager.CreateEntity(typeof(SpawnerRegistry), typeof(ElementSpawnRequest));
+            EntityManager.SetComponentData(_spawnerEntity, new SpawnerRegistry { Type = ElementType.Fire, SpawnerEntity = _spawnerEntity });
+        }
+
+        [Test]
+        public void SameTypeCollision_WithNoCooldown_CreatesAllRequests()
+        {
             EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0, 0, 0));
             EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0.1f, 0, 0));
 
             World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
             World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
+            EntityManager.CompleteAllTrackedJobs();
             World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
             
-            var buffer = EntityManager.GetBuffer<ElementSpawnRequest>(spawnerEntity);
-            Assert.AreEqual(1, buffer.Length);
+            var elementBuffer = EntityManager.GetBuffer<ElementSpawnRequest>(_spawnerEntity);
+            var particleBuffer = EntityManager.GetBuffer<ParticleSpawnRequest>(_particleManager);
+            Assert.AreEqual(1, elementBuffer.Length, "Should create one element spawn request.");
+            Assert.AreEqual(1, particleBuffer.Length, "Should create one particle spawn request.");
         }
         
         [Test]
-        public void SameTypeCollision_WithCooldown_DoesNotCreateSpawnRequest()
+        public void SameTypeCollision_WithCooldown_CreatesNoRequests()
         {
-            var spawnerEntity = EntityManager.CreateEntity(typeof(SpawnerRegistry), typeof(ElementSpawnRequest));
-            EntityManager.SetComponentData(spawnerEntity, new SpawnerRegistry { Type = ElementType.Fire, SpawnerEntity = spawnerEntity });
-
-           EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 5f, new float3(0, 0, 0));
-           EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0.1f, 0, 0));
+            EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 5f, new float3(0, 0, 0));
+            EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0.1f, 0, 0));
 
             World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
             World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
+            EntityManager.CompleteAllTrackedJobs();
             World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
 
-            var buffer = EntityManager.GetBuffer<ElementSpawnRequest>(spawnerEntity);
-            Assert.AreEqual(0, buffer.Length);
+            var elementBuffer = EntityManager.GetBuffer<ElementSpawnRequest>(_spawnerEntity);
+            var particleBuffer = EntityManager.GetBuffer<ParticleSpawnRequest>(_particleManager);
+            Assert.AreEqual(0, elementBuffer.Length, "Should not create an element spawn request.");
+            Assert.AreEqual(0, particleBuffer.Length, "Should not create a particle spawn request.");
         }
 
         [Test]
-        public void DifferentTypeCollision_AddsReturnToPoolComponent()
+        public void DifferentTypeCollision_AddsReturnToPoolAndParticleRequest()
         {
             var entityA = EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0, 0, 0));
             var entityB = EntityTest.CreateTestElement(EntityManager, ElementType.Water, 0, new float3(0.1f, 0, 0));
 
             World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
             World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
+            EntityManager.CompleteAllTrackedJobs();
             World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
 
-            Assert.IsTrue(EntityManager.HasComponent<ReturnToPool>(entityA));
-            Assert.IsTrue(EntityManager.HasComponent<ReturnToPool>(entityB));
-        }
-        
-        [Test]
-        public void AnyCollision_CreatesParticleSpawnRequest()
-        {
-            var particleManager = EntityManager.CreateEntity(typeof(ParticlePrefabs), typeof(ParticleSpawnRequest));
-            EntityManager.SetComponentData(particleManager, new ParticlePrefabs
-            {
-                CreationEffect = Entity.Null,
-                ExplosionEffect = Entity.Null
-            });
-
-            EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0, 0, 0));
-            EntityTest.CreateTestElement(EntityManager, ElementType.Water, 0, new float3(0.1f, 0, 0));
-
-            World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
-            World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
-            World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
-            
-            var buffer = EntityManager.GetBuffer<ParticleSpawnRequest>(particleManager);
-            Assert.AreEqual(1, buffer.Length);
+            var particleBuffer = EntityManager.GetBuffer<ParticleSpawnRequest>(_particleManager);
+            Assert.IsTrue(EntityManager.HasComponent<ReturnToPool>(entityA), "Entity A should have ReturnToPool component.");
+            Assert.IsTrue(EntityManager.HasComponent<ReturnToPool>(entityB), "Entity B should have ReturnToPool component.");
+            Assert.AreEqual(1, particleBuffer.Length, "Should create one particle spawn request for explosion.");
         }
     }
 }

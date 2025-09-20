@@ -43,6 +43,8 @@ namespace ElementLogicFail.Scripts.Tests
                 typeof(PhysicsVelocity),
                 typeof(ElementData));
             
+            entityManager.AddComponent<PhysicsMass>(entity);
+            
             var capsule = CapsuleCollider.Create(new CapsuleGeometry { Vertex0 = float3.zero, Vertex1 = new float3(0, 1, 0), Radius = 0.5f });
             entityManager.SetComponentData(entity, new LocalTransform { Position = position, Scale = 1 });
             entityManager.SetComponentData(entity, new PhysicsCollider { Value = capsule });
