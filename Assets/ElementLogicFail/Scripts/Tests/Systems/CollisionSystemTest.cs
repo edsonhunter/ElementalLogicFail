@@ -1,74 +1,86 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Particles;
+using ElementLogicFail.Scripts.Components.Pool;
 using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Components.Spawner;
 using ElementLogicFail.Scripts.Systems.Collision;
 using ElementLogicFail.Scripts.Tests.Editor;
 using NUnit.Framework;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Physics.Systems;
-using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Tests.Systems
 {
     public class CollisionSystemTest : ECSTestFixture
     {
-        [TestCase(1, 1, 0, 0, true, TestName = "Collide between same elements with no cooldown")]
-        [TestCase(1, 2, 0, 0, false, TestName = "No Collide between different elements")]
-        public void CollisionSystem_AddSpawnRequest(int elementA, int elementB, int cooldownA, int cooldownB,
-            bool collision)
+         [Test]
+        public void SameTypeCollision_WithNoCooldown_CreatesSpawnRequest()
         {
-            PhysicsSystemGroup simulationSystem = World.GetOrCreateSystemManaged<PhysicsSystemGroup>();
-            var entitySimulationCommandBufferSystem =
-                World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
-            EntityManager entityManager = entitySimulationCommandBufferSystem.EntityManager;
+            var spawnerEntity = EntityManager.CreateEntity(typeof(SpawnerRegistry), typeof(ElementSpawnRequest));
+            EntityManager.SetComponentData(spawnerEntity, new SpawnerRegistry { Type = ElementType.Fire, SpawnerEntity = spawnerEntity });
             
-            var spawnerEntity = entityManager.CreateEntity(
-                typeof(SpawnerRegistry),
-                typeof(ElementSpawnRequest)
-            );
-            entityManager.SetComponentData(spawnerEntity, new SpawnerRegistry
+            EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0, 0, 0));
+            EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0.1f, 0, 0));
+
+            World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
+            World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
+            World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
+            
+            var buffer = EntityManager.GetBuffer<ElementSpawnRequest>(spawnerEntity);
+            Assert.AreEqual(1, buffer.Length);
+        }
+        
+        [Test]
+        public void SameTypeCollision_WithCooldown_DoesNotCreateSpawnRequest()
+        {
+            var spawnerEntity = EntityManager.CreateEntity(typeof(SpawnerRegistry), typeof(ElementSpawnRequest));
+            EntityManager.SetComponentData(spawnerEntity, new SpawnerRegistry { Type = ElementType.Fire, SpawnerEntity = spawnerEntity });
+
+           EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 5f, new float3(0, 0, 0));
+           EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0.1f, 0, 0));
+
+            World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
+            World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
+            World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
+
+            var buffer = EntityManager.GetBuffer<ElementSpawnRequest>(spawnerEntity);
+            Assert.AreEqual(0, buffer.Length);
+        }
+
+        [Test]
+        public void DifferentTypeCollision_AddsReturnToPoolComponent()
+        {
+            var entityA = EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0, 0, 0));
+            var entityB = EntityTest.CreateTestElement(EntityManager, ElementType.Water, 0, new float3(0.1f, 0, 0));
+
+            World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
+            World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
+            World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
+
+            Assert.IsTrue(EntityManager.HasComponent<ReturnToPool>(entityA));
+            Assert.IsTrue(EntityManager.HasComponent<ReturnToPool>(entityB));
+        }
+        
+        [Test]
+        public void AnyCollision_CreatesParticleSpawnRequest()
+        {
+            var particleManager = EntityManager.CreateEntity(typeof(ParticlePrefabs), typeof(ParticleSpawnRequest));
+            EntityManager.SetComponentData(particleManager, new ParticlePrefabs
             {
-                Type = (ElementType)elementA,
-                SpawnerEntity = spawnerEntity
+                CreationEffect = Entity.Null,
+                ExplosionEffect = Entity.Null
             });
 
-            var entityA = entityManager.CreateEntity(
-                typeof(LocalTransform),
-                typeof(PhysicsCollider),
-                typeof(PhysicsVelocity),
-                typeof(ElementData));
+            EntityTest.CreateTestElement(EntityManager, ElementType.Fire, 0, new float3(0, 0, 0));
+            EntityTest.CreateTestElement(EntityManager, ElementType.Water, 0, new float3(0.1f, 0, 0));
 
-            var capsule = CapsuleCollider.Create(
-                new CapsuleGeometry { Vertex0 = float3.zero, Vertex1 = new float3(0, 1, 0), Radius = 0.5f });
-
-            entityManager.SetComponentData(entityA, new LocalTransform { Position = new float3(0, 0, 0), Scale = 1 });
-            entityManager.SetComponentData(entityA, new PhysicsCollider { Value = capsule });
-            entityManager.SetComponentData(entityA, EntityTest.CreateElementData((ElementType)elementA, 2, cooldownA));
-
-            var entityB = entityManager.CreateEntity(
-                typeof(LocalTransform),
-                typeof(PhysicsCollider),
-                typeof(PhysicsVelocity),
-                typeof(ElementData));
-
-            entityManager.SetComponentData(entityB,
-                new LocalTransform { Position = new float3(0.1f, 0, 0), Scale = 1 });
-            entityManager.SetComponentData(entityB, new PhysicsCollider { Value = capsule });
-            entityManager.SetComponentData(entityB, EntityTest.CreateElementData((ElementType)elementB, 2, cooldownB));
-
-            SystemHandle collisionSystem = World.CreateSystem<CollisionSystem>();
-            simulationSystem.Update();
-            collisionSystem.Update(World.Unmanaged);
-            entitySimulationCommandBufferSystem.Update();
-
-            entityManager.CompleteAllTrackedJobs();
-
-            BufferLookup<ElementSpawnRequest> buffer =
-                entitySimulationCommandBufferSystem.GetBufferLookup<ElementSpawnRequest>(true);
-            Assert.AreEqual(collision, buffer[spawnerEntity].Length >= 1);
+            World.GetOrCreateSystemManaged<PhysicsSystemGroup>().Update();
+            World.GetOrCreateSystem<CollisionSystem>().Update(World.Unmanaged);
+            World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
+            
+            var buffer = EntityManager.GetBuffer<ParticleSpawnRequest>(particleManager);
+            Assert.AreEqual(1, buffer.Length);
         }
     }
 }
