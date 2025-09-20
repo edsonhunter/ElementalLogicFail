@@ -11,12 +11,4 @@ namespace ElementLogicFail.Scripts.Components.Element
         public uint RandomSeed;
         public float Cooldown;
     }
-
-    public enum ElementType : byte
-    {
-        Fire,
-        Water,
-        Earth,
-        Wind
-    }
 }

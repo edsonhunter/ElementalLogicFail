@@ -5,7 +5,11 @@
         "GUID:ac88e0386a85820499113b11a72f611f",
         "GUID:98d3a33a2cbf2364bb29ed98f8caed68",
         "GUID:ae16def5701053d4a96410a5affe45d9",
-        "GUID:796a04b6fda63e946a986ffad3c54062"
+        "GUID:796a04b6fda63e946a986ffad3c54062",
+        "GUID:734d92eba21c94caba915361bd5ac177",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:3c024e83b8cd8694fb4a11bd98da95a2",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f"
     ],
     "includePlatforms": [
         "Android",

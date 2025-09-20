@@ -21,7 +21,6 @@ namespace ElementLogicFail.Scripts.Tests.Systems
             {
                 Prefab = particlePrefab,
                 Position = new float3(5, 0, 5),
-                Count = 1
             });
             
             World.GetOrCreateSystem<ParticleSystem>().Update(World.Unmanaged);
@@ -37,7 +36,7 @@ namespace ElementLogicFail.Scripts.Tests.Systems
             var particlePrefab = EntityManager.CreateEntity();
             var particleManager = EntityManager.CreateEntity(typeof(ParticlePrefabs));
             var requestBuffer = EntityManager.AddBuffer<ParticleSpawnRequest>(particleManager);
-            requestBuffer.Add(new ParticleSpawnRequest { Prefab = particlePrefab, Count = 1 });
+            requestBuffer.Add(new ParticleSpawnRequest { Prefab = particlePrefab });
             
             World.GetOrCreateSystem<ParticleSystem>().Update(World.Unmanaged);
             

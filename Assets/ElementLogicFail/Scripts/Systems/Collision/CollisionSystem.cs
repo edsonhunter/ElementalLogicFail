@@ -161,7 +161,6 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             {
                 Prefab = particlePrefab,
                 Position = position,
-                Count = 5
             });
         }
     }

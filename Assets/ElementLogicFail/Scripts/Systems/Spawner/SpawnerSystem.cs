@@ -1,5 +1,7 @@
-﻿using ElementLogicFail.Scripts.Components.Request;
+﻿using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Request;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Physics.Systems;
 using Unity.Transforms;
@@ -16,6 +18,7 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             state.RequireForUpdate<Components.Spawner.Spawner>();
             state.RequireForUpdate<ElementSpawnRequest>();
+            state.RequireForUpdate<SpawnerRateChangeRequest>();
         }
 
         [BurstCompile]
@@ -27,10 +30,22 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
             EntityCommandBuffer entityCommandBuffer =
                 entitySimulationCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged);
 
+            var requestBuffer = SystemAPI.GetSingletonBuffer<SpawnerRateChangeRequest>();
+            var rateChanges = new NativeHashMap<int, float>(requestBuffer.Length, Allocator.Temp);
+            foreach (var request in requestBuffer)
+            {
+                rateChanges[(int)request.Type] = request.NewRate;
+            }
+            
             foreach (var (spawner, transform, entity) in
                      SystemAPI.Query<RefRW<Components.Spawner.Spawner>, RefRO<LocalTransform>>().WithEntityAccess())
             {
                 Components.Spawner.Spawner spawnerRW = spawner.ValueRW;
+                
+                if (rateChanges.TryGetValue((int)spawner.ValueRO.Type, out var newRate))
+                {
+                    spawnerRW.SpawnRate = newRate;
+                }
                 
                 spawnerRW.Timer += deltaTime;
                 float timePerSpawn = 1f / spawnerRW.SpawnRate;
@@ -45,6 +60,7 @@ namespace ElementLogicFail.Scripts.Systems.Spawner
                 }
                 spawner.ValueRW = spawnerRW;
             }
+            requestBuffer.Clear();
         }
 
         [BurstCompile]
