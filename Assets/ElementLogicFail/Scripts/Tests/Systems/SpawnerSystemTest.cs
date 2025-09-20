@@ -1,12 +1,8 @@
-﻿using ElementLogicFail.Scripts.Components.Element;
-using ElementLogicFail.Scripts.Components.Request;
-using ElementLogicFail.Scripts.Components.Spawner;
+﻿using ElementLogicFail.Scripts.Components.Request;
 using ElementLogicFail.Scripts.Systems.Spawner;
 using ElementLogicFail.Scripts.Tests.Editor;
 using NUnit.Framework;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
 
 namespace ElementLogicFail.Scripts.Tests.Systems
 {
@@ -14,30 +10,31 @@ namespace ElementLogicFail.Scripts.Tests.Systems
     public class SpawnerSystemTest : ECSTestFixture
     {
         [Test]
-        public void Spawner_AddSpawnRequest()
+        public void Spawner_WhenTimerIsReady_AddsSpawnRequest()
         {
             var entitySimulationCommandBufferSystem =
                 World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             var entityManager = entitySimulationCommandBufferSystem.EntityManager;
             
-            Entity entity =
-                entityManager.CreateEntity(typeof(Spawner), typeof(LocalTransform), typeof(ElementSpawnRequest));
-            entityManager.SetComponentData(entity, new Spawner
-            {
-                Type = ElementType.Fire,
-                ElementPrefab = Entity.Null,
-                SpawnRate = 1f,
-                Timer = 1f
-            });
+            var spawnerEntity = EntityTest.CreateTestSpawner(entityManager, 1f, 1f); // Rate of 1/sec, timer is at 1sec
             
-            entityManager.SetComponentData(entity, LocalTransform.FromPosition(float3.zero));
+            World.GetOrCreateSystem<SpawnerSystem>().Update(World.Unmanaged);
+            World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
             
-            SystemHandle system = World.CreateSystem<SpawnerSystem>();
-            system.Update(World.Unmanaged);
-            entitySimulationCommandBufferSystem.Update();
+            var buffer = entityManager.GetBuffer<ElementSpawnRequest>(spawnerEntity);
+            Assert.AreEqual(1, buffer.Length);
+        }
+        
+        [Test]
+        public void Spawner_WhenTimerNotReady_DoesNotAddSpawnRequest()
+        {
+            var spawnerEntity = EntityTest.CreateTestSpawner(EntityManager, 1f, 0.5f); // Rate of 1/sec, timer is at 0.5sec
             
-            BufferLookup<ElementSpawnRequest> buffer = entitySimulationCommandBufferSystem.GetBufferLookup<ElementSpawnRequest>(true);
-            Assert.AreEqual(1, buffer[entity].Length);
+            World.GetOrCreateSystem<SpawnerSystem>().Update(World.Unmanaged);
+            World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>().Update();
+            
+            var buffer = EntityManager.GetBuffer<ElementSpawnRequest>(spawnerEntity);
+            Assert.AreEqual(0, buffer.Length);
         }
     }
 }

@@ -1,4 +1,6 @@
 ﻿using ElementLogicFail.Scripts.Components.Element;
+using ElementLogicFail.Scripts.Components.Request;
+using ElementLogicFail.Scripts.Components.Spawner;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -43,12 +45,31 @@ namespace ElementLogicFail.Scripts.Tests
                 typeof(PhysicsVelocity),
                 typeof(ElementData));
             
-            entityManager.AddComponent<PhysicsMass>(entity);
+            entityManager.AddComponentData(entity, new PhysicsMass
+            {
+                InverseMass = 1f,
+                InverseInertia = new float3(1f, 1f, 1f),
+                AngularExpansionFactor = 1f
+            });
             
             var capsule = CapsuleCollider.Create(new CapsuleGeometry { Vertex0 = float3.zero, Vertex1 = new float3(0, 1, 0), Radius = 0.5f });
             entityManager.SetComponentData(entity, new LocalTransform { Position = position, Scale = 1 });
             entityManager.SetComponentData(entity, new PhysicsCollider { Value = capsule });
             entityManager.SetComponentData(entity, CreateElementData(type, 2, cooldown));
+            return entity;
+        }
+        
+        public static Entity CreateTestSpawner(EntityManager entityManager, float spawnRate, float timer)
+        {
+            Entity entity = entityManager.CreateEntity(typeof(Spawner), typeof(LocalTransform), typeof(ElementSpawnRequest));
+            entityManager.SetComponentData(entity, new Spawner
+            {
+                Type = ElementType.Fire,
+                ElementPrefab = Entity.Null,
+                SpawnRate = spawnRate,
+                Timer = timer
+            });
+            entityManager.SetComponentData(entity, LocalTransform.FromPosition(float3.zero));
             return entity;
         }
     }

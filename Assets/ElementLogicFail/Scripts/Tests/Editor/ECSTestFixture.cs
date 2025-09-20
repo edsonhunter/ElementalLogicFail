@@ -12,7 +12,9 @@ namespace ElementLogicFail.Scripts.Tests.Editor
         public virtual void Setup()
         {
             World = new World("ECSTestSetup");
-            EntityManager = World.EntityManager;
+            var entitySimulationCommandBufferSystem =
+                World.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
+            EntityManager = entitySimulationCommandBufferSystem.EntityManager;
         }
 
         [TearDown]

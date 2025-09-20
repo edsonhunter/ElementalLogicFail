@@ -12,6 +12,7 @@ using Unity.Physics.Systems;
 
 namespace ElementLogicFail.Scripts.Tests.Systems
 {
+    [TestFixture]
     public class CollisionSystemTest : ECSTestFixture
     {
         private Entity _particleManager;
