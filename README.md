@@ -1,3 +1,12 @@
+How to Play:
+- Open the Bootstrapper Scene
+- Press Play on Unity Editor
+- After the Game Load, press "Play Game" button on the Main Menu
+- After the Gameplay Scene loads check the elements wandering the scene
+- Increase or decrease the spawn rate through the buttons to add more or less elements
+- Check the memory reporter in the middle of the screen
+
+
 12/09
 - Created the project.
 - I've decided to try out the "Projects" feature Github provides to organize tasks
