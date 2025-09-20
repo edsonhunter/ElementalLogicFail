@@ -53,3 +53,6 @@
 - Fixed and finalized the PoolSystem for element prefabs
 - Created and finished the particle systems
 - Added more tests to embrace the new systems
+- Finish settings and memory reporter
+- Improve camera and fix a lot of things
+- Added spawning rate controllers
