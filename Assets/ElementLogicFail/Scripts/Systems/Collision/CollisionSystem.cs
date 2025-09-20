@@ -46,8 +46,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             _spawnerRegistryLookup.Update(ref state);
             _particlePrefabLookup.Update(ref state);
 
-            var particleManagerQuery = SystemAPI.QueryBuilder().WithAll<ParticlePrefabs>().Build();
-            var particleManagerEntity = particleManagerQuery.GetSingletonEntity();
+            bool hasParticles = SystemAPI.TryGetSingletonEntity<ParticlePrefabs>(out var particleManagerEntity);
             var particlePrefabLookup = SystemAPI.GetComponentLookup<ParticlePrefabs>(true);
             
             _typeToSpawnerMap.Clear();
@@ -67,6 +66,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
                 TypeToSpawnerMap = _typeToSpawnerMap,
                 ParticlePrefabLookup = particlePrefabLookup,
                 ParticleManagerEntity = particleManagerEntity,
+                HasParticle = hasParticles,
                 EntityCommandBuffer = parallelWriter,
             };
             
@@ -88,8 +88,10 @@ namespace ElementLogicFail.Scripts.Systems.Collision
         [ReadOnly] public NativeParallelHashMap<int, Entity>  TypeToSpawnerMap;
         [ReadOnly] public ComponentLookup<ParticlePrefabs> ParticlePrefabLookup;
         [ReadOnly] public Entity ParticleManagerEntity;
+        [ReadOnly] public bool HasParticle;
         
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
+        
 
         public void Execute(CollisionEvent collisionEvent)
         {
@@ -105,7 +107,7 @@ namespace ElementLogicFail.Scripts.Systems.Collision
             var dataB = ElementLookup[b];
 
             float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
-            var particlePrefabs = ParticlePrefabLookup[ParticleManagerEntity];
+            ParticlePrefabs particlePrefabs = HasParticle ? ParticlePrefabLookup[ParticleManagerEntity] : default;
             
             if (dataA.Type == dataB.Type)
             {
@@ -137,25 +139,29 @@ namespace ElementLogicFail.Scripts.Systems.Collision
                         Type = dataA.Type,
                         Position = position
                     });
-                    EntityCommandBuffer.AppendToBuffer(0, ParticleManagerEntity, new ParticleSpawnRequest
-                    {
-                        Prefab =  particlePrefabs.CreationEffect,
-                        Position = position,
-                        Count = 5
-                    });
+                    AppendParticleRequest(particlePrefabs.CreationEffect, position);
                 }
             }
             else
             {
                 EntityCommandBuffer.AddComponent(0, a, new ReturnToPool());
                 EntityCommandBuffer.AddComponent(0, b, new ReturnToPool());
-                EntityCommandBuffer.AppendToBuffer(0, ParticleManagerEntity, new ParticleSpawnRequest
-                {
-                    Prefab = particlePrefabs.ExplosionEffect,
-                    Position = position,
-                    Count = 5
-                });
+                AppendParticleRequest(particlePrefabs.ExplosionEffect, position);
             }
+        }
+
+        private void AppendParticleRequest(Entity particlePrefab, float3 position)
+        {
+            if (!HasParticle)
+            {
+                return;
+            }
+            
+            EntityCommandBuffer.AppendToBuffer(0, ParticleManagerEntity, new ParticleSpawnRequest
+            {
+                Prefab = particlePrefab,
+                Position = position,
+            });
         }
     }
 }

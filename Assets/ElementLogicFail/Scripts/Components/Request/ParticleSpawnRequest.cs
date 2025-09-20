@@ -7,6 +7,5 @@ namespace ElementLogicFail.Scripts.Components.Request
     {
         public Entity Prefab;
         public float3 Position;
-        public int Count;
     }
 }
