@@ -30,7 +30,7 @@ namespace ElementLogicFail.Scripts.Authoring.Spawner
             AddComponent(entity, new ElementPool
             {
                 ElementType = (int)authoring.type,
-                InitialSize = authoring.initialPoolSize,
+                PoolSize = authoring.initialPoolSize,
                 Prefab = prefabEntity
             });
             

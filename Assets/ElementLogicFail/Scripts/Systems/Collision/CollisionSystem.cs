@@ -139,14 +139,13 @@ namespace ElementLogicFail.Scripts.Systems.Collision
                         Type = dataA.Type,
                         Position = position
                     });
-                    AppendParticleRequest(particlePrefabs.CreationEffect, position);
                 }
             }
             else
             {
                 EntityCommandBuffer.AddComponent(0, a, new ReturnToPool());
                 EntityCommandBuffer.AddComponent(0, b, new ReturnToPool());
-                AppendParticleRequest(particlePrefabs.ExplosionEffect, position);
+                AppendParticleRequest(particlePrefabs.ParticlePrefab, position);
             }
         }
 

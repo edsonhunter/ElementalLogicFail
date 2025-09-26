@@ -26,8 +26,8 @@ namespace ElementLogicFail.Scripts.Tests.Systems
             _particleManager = EntityManager.CreateEntity(typeof(ParticlePrefabs), typeof(ParticleSpawnRequest));
             EntityManager.SetComponentData(_particleManager, new ParticlePrefabs
             {
-                CreationEffect = Entity.Null,
-                ExplosionEffect = Entity.Null
+                ParticlePrefab = Entity.Null,
+                PoolSize = 0,
             });
 
             _spawnerEntity = EntityManager.CreateEntity(typeof(SpawnerRegistry), typeof(ElementSpawnRequest));

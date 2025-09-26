@@ -2,9 +2,8 @@
 
 namespace ElementLogicFail.Scripts.Components.Pool
 {
-    public struct ElementPool : IComponentData
+    public struct ParticlePool : IComponentData
     {
-        public int ElementType;
         public Entity Prefab;
         public int PoolSize;
     }

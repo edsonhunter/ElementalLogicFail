@@ -4,7 +4,7 @@ namespace ElementLogicFail.Scripts.Components.Particles
 {
     public struct ParticlePrefabs : IComponentData
     {
-        public Entity CreationEffect;
-        public Entity ExplosionEffect;
+        public Entity ParticlePrefab;
+        public int PoolSize;
     }
 }

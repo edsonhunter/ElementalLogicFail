@@ -244,8 +244,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7f3ea3fbb06444096c0c676416d50f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Elf.Authoring::ElementLogicFail.Scripts.Authoring.Particles.ParticleAuthoring
-  creationEffect: {fileID: 1164248462272549481, guid: 2aff8db1ac80a8c4184ab455d18fd275, type: 3}
-  explosionEffect: {fileID: 4041738926360207625, guid: c3859e9cd8843b84ab7f2455a52dc544, type: 3}
+  particlePrefab: {fileID: 4041738926360207625, guid: c3859e9cd8843b84ab7f2455a52dc544, type: 3}
+  poolSize: 256
 --- !u!4 &641491443
 Transform:
   m_ObjectHideFlags: 0

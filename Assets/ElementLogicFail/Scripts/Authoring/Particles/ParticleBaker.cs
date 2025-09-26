@@ -11,8 +11,8 @@ namespace ElementLogicFail.Scripts.Authoring.Particles
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, new ParticlePrefabs
             {
-                CreationEffect =  GetEntity(authoring.creationEffect, TransformUsageFlags.Dynamic),
-                ExplosionEffect = GetEntity(authoring.explosionEffect, TransformUsageFlags.Dynamic)
+                ParticlePrefab =  GetEntity(authoring.particlePrefab, TransformUsageFlags.Dynamic),
+                PoolSize = authoring.poolSize
             });
             
             AddBuffer<ParticleSpawnRequest>(entity);
