@@ -2,7 +2,6 @@
     "name": "FourCorners.Systems",
     "rootNamespace": "",
     "references": [
-        "GUID:5b95b7014dcdc50418a430792ff827bc",
         "GUID:0afaacda6b6ccdc42907d0e3b39c7dbe",
         "GUID:734d92eba21c94caba915361bd5ac177",
         "GUID:d8b63aba1907145bea998dd612889d6b",

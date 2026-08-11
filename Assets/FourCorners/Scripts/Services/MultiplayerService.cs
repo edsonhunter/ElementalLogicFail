@@ -11,7 +11,9 @@ using Unity.Networking.Transport;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay.Models;
+using Unity.Collections;
 using Unity.Entities;
+
 namespace FourCorners.Scripts.Services
 {
     public class MultiplayerService : IMultiplayerService
@@ -223,30 +225,34 @@ namespace FourCorners.Scripts.Services
         }
         public void Disconnect()
         {
-            Debug.Log("[MultiplayerService] Disconnecting from session. Disposing Netcode worlds.");
+            Debug.Log("[MultiplayerService] Disconnecting from session.");
 
-            foreach (var world in World.All)
-            {
-                if ((world.IsClient() || world.IsServer()) && world.IsCreated)
-                {
-                    world.EntityManager
-                        .CreateEntityQuery(typeof(NetworkStreamConnection))
-                        .ToEntityArray(Unity.Collections.Allocator.Temp)
-                        .Dispose(); // flush pending connections before tear-down
+            RequestDisconnect(ClientServerBootstrap.ClientWorld);
+            RequestDisconnect(ClientServerBootstrap.ServerWorld);
+        }
 
-                    // Request graceful disconnect by destroying in-game stream connections
-                    var networkQuery = world.EntityManager.CreateEntityQuery(
-                        typeof(NetworkStreamConnection));
-                    if (!networkQuery.IsEmpty)
-                    {
-                        var ecb = new Unity.Entities.EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-                        foreach (var e in networkQuery.ToEntityArray(Unity.Collections.Allocator.Temp))
-                            ecb.AddComponent<NetworkStreamRequestDisconnect>(e);
-                        ecb.Playback(world.EntityManager);
-                        ecb.Dispose();
-                    }
-                }
-            }
+        /// <summary>
+        /// Asks Netcode to close every stream connection in the given world.
+        ///
+        /// The previous version also allocated a NativeArray of connections and immediately
+        /// disposed it, commented as "flush pending connections before tear-down" — that does
+        /// nothing at all, and the real work was then done by a second identical query.
+        /// </summary>
+        private static void RequestDisconnect(World world)
+        {
+            if (world is not { IsCreated: true }) return;
+
+            var query = world.EntityManager.CreateEntityQuery(typeof(NetworkStreamConnection));
+            if (query.IsEmpty) return;
+
+            using var connections = query.ToEntityArray(Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            foreach (var connection in connections)
+                ecb.AddComponent<NetworkStreamRequestDisconnect>(connection);
+
+            ecb.Playback(world.EntityManager);
+            ecb.Dispose();
         }
     }
 }

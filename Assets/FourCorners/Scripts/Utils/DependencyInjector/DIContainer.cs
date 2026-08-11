@@ -1,68 +1,41 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace FourCorners.Scripts.Utils.DependencyInjector
 {
+    /// <summary>
+    /// A registry of singletons keyed by their interface type.
+    ///
+    /// The reflection-based field injection this once carried ([Inject], DITypeInfo, Resolve())
+    /// was never used — the attribute appeared zero times in the project — so every service and
+    /// manager was already resolved through Get&lt;T&gt;(). The unreachable half has been removed
+    /// rather than left to imply a wiring mechanism that does not exist.
+    /// </summary>
     public class DIContainer
     {
-        private const BindingFlags InstanceBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public ;
-        private readonly Dictionary<Type, object> instanceMap = new Dictionary<Type, object>();
+        private readonly Dictionary<Type, object> _instanceMap = new();
 
         public DIContainer()
         {
-            instanceMap[typeof(DIContainer)] = this;
+            _instanceMap[typeof(DIContainer)] = this;
         }
 
         public void Register<T>(T instance)
         {
-            if (instance == null)
-            {
-                throw new ArgumentNullException(nameof(instance));
-            }
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
 
-            instanceMap[typeof(T)] = instance;
-        }
-
-        public void Resolve()
-        {
-            foreach (var instance in instanceMap.Values)
-            {
-                Inject(instance);
-            }
+            _instanceMap[typeof(T)] = instance;
         }
 
         public T Get<T>()
         {
-            try
-            {
-                return (T)instanceMap[typeof(T)];
-            }
-            catch (KeyNotFoundException e)
-            {
-                if (typeof(T).IsInterface)
-                {
-                    throw new KeyNotFoundException(
-                        $"The type '{typeof(T).FullName}' was not registered in the DI container.");
-                }
+            if (_instanceMap.TryGetValue(typeof(T), out var instance)) return (T)instance;
 
-                throw new KeyNotFoundException($"The type '{typeof(T).FullName}' is not an interface.");
-            }
-        }
-
-        private void Inject(object instance)
-        {
-            Type type = instance.GetType();
-            DITypeInfo typeInfo = DITypeInfo.Get(type, InstanceBindingFlags);
-            for (int injectindex = 0; injectindex < typeInfo.InjectableFields.Length; injectindex++)
-            {
-                FieldInfo fieldInfo = typeInfo.InjectableFields[injectindex];
-                object value = null;
-                if (instanceMap.TryGetValue(fieldInfo.FieldType, out value))
-                {
-                    fieldInfo.SetValue(instance, value);
-                }
-            }
+            // The old message reported "is not an interface" for the far more common case of a
+            // type that simply was not registered.
+            throw new KeyNotFoundException(
+                $"The type '{typeof(T).FullName}' was not registered in the DI container. " +
+                "Register it in Bootstrapper.SetupServices or SetupManagers.");
         }
     }
 }

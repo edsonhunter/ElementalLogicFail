@@ -16,7 +16,8 @@ namespace FourCorners.Scripts.Scenes
 
         protected override Task Loading()
         {
-            return GetService<ISystemBridgeService>().RegisterBridge();
+            GetService<ISystemBridgeService>().RegisterBridge();
+            return Task.CompletedTask;
         }
 
         protected override void Loaded()
@@ -32,13 +33,16 @@ namespace FourCorners.Scripts.Scenes
         {
             if (connectionScreenPanel != null)
             {
+                var multiplayer = GetService<IMultiplayerService>();
+
                 connectionScreenPanel.gameObject.SetActive(true);
+                connectionScreenPanel.InitSelection(GetService<ISystemBridgeService>().SetLocalPlayerSelection);
                 connectionScreenPanel.Init(
-                    GetService<IMultiplayerService>().AuthenticateAsync(),
-                    GetService<IMultiplayerService>().HostRelayGameAsync,
-                    GetService<IMultiplayerService>().JoinRelayGameAsync,
-                    GetService<IMultiplayerService>().HostDirectGameAsync,
-                    GetService<IMultiplayerService>().JoinDirectGameAsync,
+                    multiplayer.AuthenticateAsync(),
+                    multiplayer.HostRelayGameAsync,
+                    multiplayer.JoinRelayGameAsync,
+                    multiplayer.HostDirectGameAsync,
+                    multiplayer.JoinDirectGameAsync,
                     StartGame);
             }
             else

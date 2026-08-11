@@ -26,15 +26,20 @@ namespace FourCorners.Scripts.Scenes
         private async Task WaitAndInitCameraAsync()
         {
             var service = GetService<ISystemBridgeService>();
-            _bounds = service.GetMapBounds();
-            
-            // Wait until the ECS EntityManager has created the WanderArea singleton
-            while(_bounds.min == Vector3.zero && _bounds.max == Vector3.zero)
+
+            // Declared outside the loop: an out variable introduced in a `while` condition is
+            // scoped to the while statement, unlike one in an `if` condition.
+            Vector3 min = Vector3.zero;
+            Vector3 max = Vector3.zero;
+
+            // Poll on the success flag, never on the bounds themselves: a map centred on the
+            // origin is indistinguishable from "SubScene still streaming" and hangs forever.
+            while (!service.TryGetMapBounds(out min, out max))
             {
-                await Task.Yield(); 
-                _bounds = service.GetMapBounds();
+                await Task.Yield();
             }
-            
+
+            _bounds = (min, max);
             cameraController.Setup();
 
             // Notify systems (e.g. ClientStreamReadySystem) that the scene is fully baked

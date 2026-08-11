@@ -1,7 +1,7 @@
 using FourCorners.Scripts.Manager.Interface;
-using FourCorners.Scripts.MonoBridge;
 using FourCorners.Scripts.Scenes.Interface;
 using FourCorners.Scripts.Services.Interface;
+using FourCorners.Scripts.View;
 using UnityEngine;
 using UnityEngine.UI;
 

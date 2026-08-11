@@ -17,7 +17,8 @@ namespace FourCorners.Scripts.Systems.Connection
     /// On success: transitions MatchState.Phase from Lobby → Active,
     /// which unblocks MinionSpawningSystem globally.
     /// </summary>
-    [GenerateTestsForBurstCompatibility]
+    // Not Burst-compatible: the validation failures log interpolated strings, which is worth
+    // more here than Burst on a system that runs once per match.
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct HostStartGameSystem : ISystem
@@ -84,7 +85,11 @@ namespace FourCorners.Scripts.Systems.Connection
                 }
 
                 // --- Transition to Active ---
-                ecb.SetComponent(matchStateEntity, new MatchState { Phase = MatchPhase.Active });
+                // Copy-then-mutate: constructing a fresh MatchState here would silently reset
+                // every other field on it (HostNetworkId).
+                var updated = matchState.ValueRO;
+                updated.Phase = MatchPhase.Active;
+                ecb.SetComponent(matchStateEntity, updated);
 
                 // --- Broadcast MatchStartedRpc to ALL connected clients ---
                 // This triggers ClientMatchStartedSystem on every client,

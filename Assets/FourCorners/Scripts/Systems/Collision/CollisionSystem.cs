@@ -2,9 +2,7 @@ using FourCorners.Scripts.Components.Minion;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.Physics;
-using Unity.Transforms;
 using Unity.Physics.Systems;
 
 namespace FourCorners.Scripts.Systems.Collision
@@ -15,41 +13,42 @@ namespace FourCorners.Scripts.Systems.Collision
     [UpdateAfter(typeof(PhysicsSimulationGroup))]
     public partial struct CollisionSystem : ISystem
     {
+        private const int ExpectedCollisionsPerFrame = 128;
+
         private ComponentLookup<MinionData> _minionLookup;
-        private ComponentLookup<LocalTransform> _localTransformLookup;
         private NativeHashSet<Entity> _processedEntities;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             state.RequireForUpdate<SimulationSingleton>();
-            
+
             _minionLookup = state.GetComponentLookup<MinionData>(true);
-            _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
-            _processedEntities = new NativeHashSet<Entity>(128, Allocator.Persistent);
+            _processedEntities = new NativeHashSet<Entity>(ExpectedCollisionsPerFrame, Allocator.Persistent);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _minionLookup.Update(ref state);
-            _localTransformLookup.Update(ref state);
 
+            // Last frame's job owns _processedEntities until it finishes. Clearing it from the
+            // main thread without completing first is a race — and a hard throw with the Jobs
+            // Debugger enabled.
+            state.Dependency.Complete();
             _processedEntities.Clear();
-            
-            SimulationSingleton simulation = SystemAPI.GetSingleton<SimulationSingleton>();
-            EndSimulationEntityCommandBufferSystem.Singleton endSimulationEntityCommandBufferSystem = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            EntityCommandBuffer.ParallelWriter parallelWriter = endSimulationEntityCommandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-            
+
+            var simulation = SystemAPI.GetSingleton<SimulationSingleton>();
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+
             var job = new CollisionEventJob
             {
                 MinionLookup = _minionLookup,
-                LocalTransformLookup = _localTransformLookup,
-                EntityCommandBuffer = parallelWriter,
+                EntityCommandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
                 ProcessedEntities = _processedEntities
             };
-            
+
             state.Dependency = job.Schedule(simulation, state.Dependency);
         }
 
@@ -61,10 +60,10 @@ namespace FourCorners.Scripts.Systems.Collision
         }
     }
     
+    [BurstCompile]
     public struct CollisionEventJob : ICollisionEventsJob
     {
         [ReadOnly] public ComponentLookup<MinionData> MinionLookup;
-        [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
         public NativeHashSet<Entity> ProcessedEntities;
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
 
@@ -93,8 +92,6 @@ namespace FourCorners.Scripts.Systems.Collision
             {
                 return;
             }
-
-            float3 position = 0.5f * (LocalTransformLookup[a].Position + LocalTransformLookup[b].Position);
 
             if (canDisableA)
             {

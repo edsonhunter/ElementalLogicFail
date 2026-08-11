@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace FourCorners.Scripts.MonoBridge
+namespace FourCorners.Scripts.View
 {
     public class MultiplayerTestUI : MonoBehaviour
     {

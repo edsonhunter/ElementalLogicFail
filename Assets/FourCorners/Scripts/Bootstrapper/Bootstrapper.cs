@@ -5,7 +5,6 @@ using FourCorners.Scripts.Manager.Interface.Camera;
 using FourCorners.Scripts.Scenes;
 using FourCorners.Scripts.Services;
 using FourCorners.Scripts.Services.Interface;
-using FourCorners.Scripts.Utils.Threadpool;
 using UnityEngine;
 
 namespace FourCorners.Scripts.Bootstrapper
@@ -16,10 +15,7 @@ namespace FourCorners.Scripts.Bootstrapper
         
         private void Start()
         {
-            //Create applicationPrefab
-            //Initialize applicationPrefab
             SetupApplication();
-            SetupThreadPool();
             SetupServices();
             SetupManagers();
             StartGame();
@@ -27,13 +23,7 @@ namespace FourCorners.Scripts.Bootstrapper
 
         private void SetupApplication()
         {
-            _applicationManager = new GameObject().AddComponent<ApplicationManager>();
-        }
-
-        private void SetupThreadPool()
-        {
-            var threadObject = new GameObject().AddComponent<ThreadPoolController>();
-            threadObject.transform.SetParent(_applicationManager.transform);
+            _applicationManager = new GameObject("ApplicationManager").AddComponent<ApplicationManager>();
         }
 
         private void SetupServices()
@@ -53,7 +43,6 @@ namespace FourCorners.Scripts.Bootstrapper
 
         private void StartGame()
         {
-            _applicationManager.StartGame();
             _applicationManager.GetManager<ISceneManager>().LoadScene(new LoaderData());
         }
     }

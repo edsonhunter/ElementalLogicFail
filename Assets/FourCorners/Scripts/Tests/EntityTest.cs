@@ -1,80 +1,94 @@
+using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Minion;
 using FourCorners.Scripts.Components.Request;
 using FourCorners.Scripts.Components.Spawner;
 using FourCorners.Scripts.Components.Team;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Transforms;
 
 namespace FourCorners.Scripts.Tests
 {
+    /// <summary>
+    /// Archetype factories for system tests.
+    ///
+    /// These must mirror what the systems actually query. They had drifted: the spawner factory
+    /// still built the pre-PlayerBase-refactor archetype, so SpawnerSystem's query could never
+    /// match it and the tests asserted against a system that never ran.
+    /// </summary>
     public static class EntityTest
     {
-        public static Entity CreateMinion(EntityManager manager, TeamNumber type, float speed, int cooldown)
-        {
-            var entity = manager.CreateEntity();
-            manager.SetComponentData(entity, new MinionData()
-            {
-                TeamNumber= type,
-                Speed = speed,
-                Cooldown = cooldown,
-                Target = float3.zero,
-                RandomSeed = (uint)UnityEngine.Random.Range(1, int.MaxValue)
-            });
-            manager.SetComponentData(entity, LocalTransform.FromPosition(new float3(0, 0, 0)));
-            return entity;
-        }
+        /// <summary>Deterministic seed — test fixtures must not depend on UnityEngine.Random.</summary>
+        private const uint TestSeed = 12345;
 
         public static MinionData CreateMinionData(TeamNumber type, float speed, float cooldown)
         {
-            return new MinionData()
+            return new MinionData
             {
                 TeamNumber = type,
                 Speed = speed,
                 Cooldown = cooldown,
                 Target = float3.zero,
-                RandomSeed = (uint)UnityEngine.Random.Range(1, int.MaxValue)
+                RandomSeed = TestSeed
             };
         }
-        
-        public static Entity CreateTestMinion(EntityManager entityManager, TeamNumber type, float cooldown, float3 position)
+
+        /// <summary>
+        /// Creates the MatchState singleton in the Active phase. SpawnerSystem and
+        /// MinionSpawningSystem both gate on this, so tests must supply it.
+        /// </summary>
+        public static Entity CreateActiveMatchState(EntityManager entityManager)
         {
-            var entity = entityManager.CreateEntity(
-                typeof(LocalTransform),
-                typeof(PhysicsCollider),
-                typeof(PhysicsVelocity),
-                typeof(MinionData));
-            
-            entityManager.AddComponentData(entity, new PhysicsMass
-            {
-                InverseMass = 1f,
-                InverseInertia = new float3(1f, 1f, 1f),
-                AngularExpansionFactor = 1f
-            });
-            
-            var capsule = CapsuleCollider.Create(new CapsuleGeometry { Vertex0 = float3.zero, Vertex1 = new float3(0, 1, 0), Radius = 0.5f });
-            entityManager.SetComponentData(entity, new LocalTransform { Position = position, Scale = 1 });
-            entityManager.SetComponentData(entity, new PhysicsCollider { Value = capsule });
-            entityManager.SetComponentData(entity, CreateMinionData(type, 2, cooldown));
+            var entity = entityManager.CreateEntity(typeof(MatchStateTag), typeof(MatchState));
+            entityManager.SetComponentData(entity, new MatchState { Phase = MatchPhase.Active });
             return entity;
         }
-        
-        public static Entity CreateTestSpawner(EntityManager entityManager, float spawnRate, float timer)
+
+        /// <summary>Creates an activated corner base — the authority SpawnerSystem checks.</summary>
+        public static Entity CreateTestPlayerBase(EntityManager entityManager, TeamNumber team, bool isActive = true)
         {
-            Entity entity = entityManager.CreateEntity(typeof(SpawnerData), typeof(LocalTransform), typeof(MinionSpawnRequest), typeof(SpawnerPrefab));
+            var entity = entityManager.CreateEntity(typeof(PlayerBase));
+            entityManager.SetComponentData(entity, new PlayerBase
+            {
+                TeamNumber = team,
+                IsActive = isActive,
+                NetworkId = isActive ? 1 : 0
+            });
+            return entity;
+        }
+
+        /// <summary>
+        /// Creates a spawner owned by <paramref name="playerBaseEntity"/>.
+        ///
+        /// LocalToWorld, not LocalTransform: SpawnerJob queries RefRO&lt;LocalToWorld&gt;. Getting
+        /// this wrong does not fail loudly — the entity simply never matches the query.
+        /// </summary>
+        public static Entity CreateTestSpawner(
+            EntityManager entityManager,
+            Entity playerBaseEntity,
+            float spawnInterval,
+            float timer)
+        {
+            var entity = entityManager.CreateEntity(
+                typeof(SpawnerData),
+                typeof(LocalToWorld),
+                typeof(MinionSpawnRequest),
+                typeof(SpawnerPrefab));
+
             entityManager.SetComponentData(entity, new SpawnerData
             {
-                SpawnInterval = spawnRate,
+                PlayerBaseEntity = playerBaseEntity,
+                SpawnInterval = spawnInterval,
                 Timer = timer,
                 IsActive = true,
                 SpawnAmount = 1
             });
-            entityManager.SetComponentData(entity, LocalTransform.FromPosition(float3.zero));
-            
+
+            entityManager.SetComponentData(entity, new LocalToWorld { Value = float4x4.identity });
+
             var prefabs = entityManager.GetBuffer<SpawnerPrefab>(entity);
             prefabs.Add(new SpawnerPrefab { ModelType = UnitModelType.Warrior });
-            
+
             return entity;
         }
     }

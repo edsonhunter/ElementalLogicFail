@@ -19,8 +19,23 @@ namespace FourCorners.Scripts.Authoring.Spawner
                 var entity = GetEntity(TransformUsageFlags.Dynamic);
 
                 // Resolve the owning PlayerBase entity from the parent GameObject.
-                // Requires this GameObject to be a direct child of a PlayerBaseAuthoring object.
-                var parentEntity = GetEntity(authoring.transform.parent, TransformUsageFlags.Dynamic);
+                // Must be a direct child of a PlayerBaseAuthoring object.
+                //
+                // Fail loudly at bake time: an unparented spawner used to bake
+                // PlayerBaseEntity = Entity.Null, after which SpawnerSystem's authority check
+                // and MinionSpawningSystem's team lookup both silently returned forever with no
+                // diagnostic anywhere — the spawner simply never fired.
+                var parent = authoring.transform.parent;
+                if (parent == null || parent.GetComponent<PlayerBaseAuthoring>() == null)
+                {
+                    Debug.LogError(
+                        $"[SpawnerAuthoring] '{authoring.name}' must be a direct child of a GameObject " +
+                        "with PlayerBaseAuthoring. It will never spawn anything as authored.",
+                        authoring);
+                    return;
+                }
+
+                var parentEntity = GetEntity(parent, TransformUsageFlags.Dynamic);
 
                 AddComponent(entity, new Components.Spawner.SpawnerData
                 {

@@ -55,5 +55,12 @@ sysinfo.txt
 .utmp/
 .agent[s]/
 
+# Entities baking artefact, regenerated on demand
+/Assets/SceneDependencyCache/
+/Assets/SceneDependencyCache.meta
+
+# Stale file-listing dumps
+/all_files*.txt
+
 !**/M2Mqtt/*.csproj
 !**/Best HTTP (Pro)/*.csproj

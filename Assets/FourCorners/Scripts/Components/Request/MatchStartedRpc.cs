@@ -8,7 +8,9 @@ namespace FourCorners.Scripts.Components.Request
     /// the host successfully starts the game (MatchState transitions to Active).
     /// ClientMatchStartedSystem receives this and fires ISystemBridgeService.OnMatchStarted,
     /// which triggers every client's scene transition from Lobby → Gameplay.
+    ///
+    /// NOTE: no [GhostComponent] here — see ReadyForGhostsRequest. On an IRpcCommand it emits a
+    /// competing ghost serializer that silently drops the payload on non-IPC transports.
     /// </summary>
-    [GhostComponent]
     public struct MatchStartedRpc : IRpcCommand { }
 }

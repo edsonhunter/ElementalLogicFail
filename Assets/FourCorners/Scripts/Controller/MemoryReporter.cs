@@ -15,12 +15,10 @@ namespace FourCorners.Scripts.Controller
         private readonly StringBuilder _stringBuilder = new StringBuilder(512);
 
         private EntityManager _entityManager;
-        private EntityQuery _activeMinionsQuery;
-        private EntityQuery _totalMinionsQuery;
+        private EntityQuery _minionsQuery;
 
         private int _totalEntityCount;
-        private int _activeMinionCount;
-        private int _pooledMinionCount;
+        private int _minionCount;
         private float _deltaTime;
 
         private ProfilerRecorder _totalReservedMemoryRecorder;
@@ -46,8 +44,10 @@ namespace FourCorners.Scripts.Controller
 
         private void CreateQueries()
         {
-            _totalMinionsQuery = _entityManager.CreateEntityQuery(typeof(MinionData));
-            _activeMinionsQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<MinionData>());
+            // One query. There used to be two identical ones (typeof(T) and
+            // ComponentType.ReadOnly<T>() match the same archetypes), differenced to produce a
+            // "Pooled Minions" figure that has read exactly 0 since pooling was removed.
+            _minionsQuery = _entityManager.CreateEntityQuery(ComponentType.ReadOnly<MinionData>());
         }
 
         void OnEnable()
@@ -79,9 +79,7 @@ namespace FourCorners.Scripts.Controller
 #if UNITY_EDITOR
             _totalEntityCount = _entityManager.Debug.EntityCount;
 #endif
-            int totalMinionCount = _totalMinionsQuery.CalculateEntityCount();
-            _activeMinionCount = _activeMinionsQuery.CalculateEntityCount();
-            _pooledMinionCount = totalMinionCount - _activeMinionCount;
+            _minionCount = _minionsQuery.CalculateEntityCount();
 
             _deltaTime += (Time.unscaledDeltaTime - _deltaTime) * 0.1f;
         }
@@ -96,8 +94,7 @@ namespace FourCorners.Scripts.Controller
             _stringBuilder.AppendLine("--- Entities ---");
             
             _stringBuilder.AppendLine($"Total Entities: {_totalEntityCount}");
-            _stringBuilder.AppendLine($"Active Minions: {_activeMinionCount}");
-            _stringBuilder.AppendLine($"Pooled Minions: {_pooledMinionCount}");
+            _stringBuilder.AppendLine($"Minions: {_minionCount}");
             _stringBuilder.AppendLine("--- Memory ---");
 
             long totalReservedMB = _totalReservedMemoryRecorder.LastValue / (1024 * 1024);

@@ -34,10 +34,12 @@ namespace FourCorners.Scripts.Systems.Connection
             var matchStateEntity = state.EntityManager.CreateEntity();
             state.EntityManager.AddComponent<MatchStateTag>(matchStateEntity);
 
-            // MatchPhase state — starts as WaitingForPlayers, gates minion spawning
+            // MatchPhase state — starts as WaitingForPlayers, gates minion spawning.
+            // HostNetworkId = 0 means "no host elected yet".
             state.EntityManager.AddComponentData(matchStateEntity, new MatchState
             {
-                Phase = MatchPhase.WaitingForPlayers
+                Phase = MatchPhase.WaitingForPlayers,
+                HostNetworkId = 0
             });
 
             // Player roster — grows as players are accepted by ServerAcceptGameSystem
@@ -45,8 +47,8 @@ namespace FourCorners.Scripts.Systems.Connection
 
             var buffer = state.EntityManager.AddBuffer<TeamStatusElement>(matchStateEntity);
 
-            // Seed 4 unoccupied slots — one per TeamNumber value (0-3)
-            for (int i = 0; i < 4; i++)
+            // One unoccupied slot per TeamNumber value
+            for (int i = 0; i < Teams.Count; i++)
             {
                 buffer.Add(new TeamStatusElement
                 {
@@ -55,7 +57,7 @@ namespace FourCorners.Scripts.Systems.Connection
                 });
             }
 
-            UnityEngine.Debug.Log("[MatchStateBootstrapSystem] MatchState entity created with 4 team slots.");
+            UnityEngine.Debug.Log($"[MatchStateBootstrapSystem] MatchState entity created with {Teams.Count} team slots.");
 
             // One-shot: disable after initialization so it never runs again
             state.Enabled = false;

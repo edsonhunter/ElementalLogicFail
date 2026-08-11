@@ -1,69 +1,55 @@
 using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Request;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
-using Unity.Scenes;
 
 namespace FourCorners.Scripts.Systems.Connection
 {
     /// <summary>
-    /// Client-side system that waits until the GameplayScene is fully loaded
-    /// and its ECS subscenes are baked. This is indicated by SceneSystem.IsSceneLoaded
-    /// and the presence of SceneLoadedTag (added by GameplaySceneController AFTER map bounds check).
+    /// Once <see cref="ClientSceneReady"/> exists, brings this client's connection in-game
+    /// locally and asks the server to start streaming ghosts.
     ///
-    /// Once ready, it brings the client connection "in game" locally and sends
-    /// ReadyForGhostsRequest to the server so Ghost streaming begins safely.
+    /// All world discrimination now lives in ClientSceneReadySystem, which is why this system
+    /// is a plain unmanaged query and Burst-compiled.
     /// </summary>
+    [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ClientStreamReadySystem : ISystem
     {
-        private EntityQuery _sceneQuery;
-        private EntityQuery _pendingNetworkIdQuery;
+        private EntityQuery _pendingConnectionQuery;
 
+        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
-            state.RequireForUpdate<SceneLoadedTag>();
-
-            _sceneQuery = state.GetEntityQuery(ComponentType.ReadOnly<SceneReference>());
+            state.RequireForUpdate<ClientSceneReady>();
 
             var builder = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<NetworkId, ClientLobbyJoinedTag>()
                 .WithNone<NetworkStreamInGame>();
-            _pendingNetworkIdQuery = state.GetEntityQuery(builder);
-            state.RequireForUpdate(_pendingNetworkIdQuery);
+            _pendingConnectionQuery = state.GetEntityQuery(builder);
+            state.RequireForUpdate(_pendingConnectionQuery);
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // ThinClients have no SubScene pipeline — they will never produce SceneReference entities.
-            // Blocking on sceneEntities.Length == 0 would deadlock them permanently.
-            // SceneLoadedTag injection from NotifyClientSceneReady() is their sole readiness signal.
-            bool isThinClient = (state.WorldUnmanaged.Flags & WorldFlags.GameThinClient) != 0;
-            if (!isThinClient)
-            {
-                // For full clients, wait until all SubScenes are fully baked before handshaking.
-                using var sceneEntities = _sceneQuery.ToEntityArray(Allocator.Temp);
-                if (sceneEntities.Length == 0) return;
-                foreach (var sceneEntity in sceneEntities)
-                {
-                    if (!SceneSystem.IsSceneLoaded(state.WorldUnmanaged, sceneEntity)) return;
-                }
-            }
-
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
-            using var connectionEntities = _pendingNetworkIdQuery.ToEntityArray(Allocator.Temp);
+            using var connectionEntities = _pendingConnectionQuery.ToEntityArray(Allocator.Temp);
 
             foreach (var entity in connectionEntities)
             {
-                UnityEngine.Debug.Log("[ClientStreamReadySystem] SubScenes baked! Adding local NetworkStreamInGame and sending ReadyForGhostsRequest.");
+                UnityEngine.Debug.Log(
+                    (FixedString128Bytes)"[ClientStreamReadySystem] Scene ready — going in-game and requesting ghosts.");
 
-                // Start expecting ghost snapshots locally
+                // Start expecting ghost snapshots locally.
                 ecb.AddComponent<NetworkStreamInGame>(entity);
 
-                // Notify server to start transmitting ghosts
+                // Ask the server to start transmitting them.
                 var req = ecb.CreateEntity();
                 ecb.AddComponent<ReadyForGhostsRequest>(req);
                 ecb.AddComponent(req, new SendRpcCommandRequest { TargetConnection = entity });

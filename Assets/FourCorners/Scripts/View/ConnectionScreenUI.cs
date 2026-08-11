@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using FourCorners.Scripts.Components.Team;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,11 +20,19 @@ namespace FourCorners.Scripts.View
         public Button hostDirectBtn;
         public Button joinDirectBtn;
 
+        [Header("Lobby Selection (optional)")]
+        [Tooltip("Options in RaceType order: Human, Orc, Soldier, Monster. Leave unassigned to always play Human.")]
+        [SerializeField] private TMP_Dropdown raceDropdown;
+
+        [Tooltip("Option 0 = 'Any corner', then one per TeamNumber. Leave unassigned to let the server choose.")]
+        [SerializeField] private TMP_Dropdown teamDropdown;
+
         [Header("General")]
         public Button closeBtn;
         public TextMeshProUGUI statusText;
 
         private Action _startGame;
+        private Action<int, RaceType> _setSelection;
         private Task _authenticateAsync;
         private Func<int, Task<string>> _hostRelayGameAsync;
         private Func<string, Task<bool>> _joinRelayGameAsync;
@@ -58,12 +67,35 @@ namespace FourCorners.Scripts.View
             SetStatus("Ready to connect.");
         }
 
+        /// <summary>
+        /// Supplies the callback that records race/team choice. Optional — without it (or
+        /// without the dropdowns wired in the scene) the player gets Human and whichever corner
+        /// the server has free, which is the behaviour that existed before.
+        /// </summary>
+        public void InitSelection(Action<int, RaceType> setSelection) => _setSelection = setSelection;
+
+        /// <summary>
+        /// Must run before connecting: ClientRequestGameSystem sends GoInGameRequest the moment
+        /// the client is assigned a NetworkId, so a choice made later would arrive too late.
+        /// </summary>
+        private void ApplySelection()
+        {
+            if (_setSelection == null) return;
+
+            // Team dropdown option 0 is "Any corner" → -1.
+            int desiredTeamIndex = teamDropdown != null ? teamDropdown.value - 1 : -1;
+            var race = raceDropdown != null ? (RaceType)raceDropdown.value : RaceType.Human;
+
+            _setSelection(desiredTeamIndex, race);
+        }
+
         private async void OnHostRelayClicked()
         {
+            ApplySelection();
             SetInteractable(false);
             SetStatus("Creating Relay Room...");
             
-            string code = await _hostRelayGameAsync(4);
+            string code = await _hostRelayGameAsync(Teams.Count);
             
             if (!string.IsNullOrEmpty(code))
             {
@@ -80,6 +112,7 @@ namespace FourCorners.Scripts.View
 
         private async void OnJoinRelayClicked()
         {
+            ApplySelection();
             if (string.IsNullOrEmpty(joinCodeInput.text))
             {
                 SetStatus("Please enter a valid Join Code.");
@@ -105,6 +138,7 @@ namespace FourCorners.Scripts.View
 
         private async void OnHostDirectClicked()
         {
+            ApplySelection();
             if (!ushort.TryParse(portInput.text, out ushort port))
             {
                 SetStatus("Invalid Port format.");
@@ -130,6 +164,7 @@ namespace FourCorners.Scripts.View
 
         private async void OnJoinDirectClicked()
         {
+            ApplySelection();
             string ip = ipInput.text;
             if (!ushort.TryParse(portInput.text, out ushort port))
             {

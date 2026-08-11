@@ -48,13 +48,16 @@ namespace FourCorners.Scripts.Systems.Connection
                 var sourceConnection = receive.ValueRO.SourceConnection;
                 ecb.DestroyEntity(rpcEntity);
 
-                // Find the team previously allocated to this connection in ServerAcceptGameSystem
+                // Recover the slot granted in ServerAcceptGameSystem, along with the race the
+                // player chose — recorded at accept time so we need no second client round trip.
                 int grantedTeam = -1;
+                var grantedRace = default(RaceType);
                 for (int i = 0; i < teamBuffer.Length; i++)
                 {
                     if (teamBuffer[i].IsOccupied && teamBuffer[i].OccupyingPlayer == sourceConnection)
                     {
                         grantedTeam = i;
+                        grantedRace = teamBuffer[i].Race;
                         break;
                     }
                 }
@@ -75,7 +78,8 @@ namespace FourCorners.Scripts.Systems.Connection
                 // Allocate their base, triggering BaseAllocationSystem
                 ecb.AddComponent(sourceConnection, new PendingBaseAllocation
                 {
-                    ApprovedTeam = (TeamNumber)grantedTeam
+                    ApprovedTeam = (TeamNumber)grantedTeam,
+                    ApprovedRace = grantedRace
                 });
             }
         }

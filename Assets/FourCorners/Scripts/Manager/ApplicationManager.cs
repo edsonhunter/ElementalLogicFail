@@ -38,11 +38,5 @@ namespace FourCorners.Scripts.Manager
             _managers = new DIContainer();
             DontDestroyOnLoad(this);
         }
-
-        public void StartGame()
-        {
-            _managers.Resolve();
-            _services.Resolve();
-        }
     }
 }

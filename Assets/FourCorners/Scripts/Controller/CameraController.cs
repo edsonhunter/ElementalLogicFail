@@ -2,6 +2,7 @@ using FourCorners.Scripts.Manager.Interface.Camera;
 using FourCorners.Scripts.Systems.Camera;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using UnityEngine;
 
 namespace FourCorners.Scripts.Controller
@@ -85,16 +86,21 @@ namespace FourCorners.Scripts.Controller
 
         private void RegisterCameraBridge()
         {
-            foreach (var world in World.All)
+            // Target the presentation client world explicitly. Scanning World.All and taking the
+            // first match picks a nondeterministic world when thin clients share the process,
+            // which silently focuses the camera on someone else's base.
+            var world = ClientServerBootstrap.ClientWorld;
+            if (world is not { IsCreated: true })
             {
-                _cameraSystem = world.GetExistingSystemManaged<LocalPlayerCameraSystem>();
-                if (_cameraSystem != null)
-                {
-                    _cameraSystem.OnCameraFocus -= MoveCameraToPlayerBase;
-                    _cameraSystem.OnCameraFocus += MoveCameraToPlayerBase;
-                    break;
-                }
+                Debug.LogWarning("[CameraController] No client world — camera focus not wired.");
+                return;
             }
+
+            _cameraSystem = world.GetExistingSystemManaged<LocalPlayerCameraSystem>();
+            if (_cameraSystem == null) return;
+
+            _cameraSystem.OnCameraFocus -= MoveCameraToPlayerBase;
+            _cameraSystem.OnCameraFocus += MoveCameraToPlayerBase;
         }
         
         public void MoveCameraToPlayerBase(float3 pos)

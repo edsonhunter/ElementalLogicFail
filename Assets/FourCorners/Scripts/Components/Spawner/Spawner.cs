@@ -1,9 +1,19 @@
 using Unity.Entities;
-using Unity.NetCode;
 
 namespace FourCorners.Scripts.Components.Spawner
 {
-    [GhostComponent]
+    /// <summary>
+    /// Server-side wave spawner. Not replicated.
+    ///
+    /// This previously carried [GhostComponent] with [GhostField] on NetworkId/IsActive, and a
+    /// comment claiming clients could react to spawner activation. They could not: spawners are
+    /// child entities of the base ghost, and Netcode does not serialise components on children
+    /// without [GhostComponent(SendDataForChildEntity = true)]. Nothing client-side reads this,
+    /// so the honest fix is to stop pretending it replicates.
+    ///
+    /// PlayerBase remains the sole authority for team identity and activation
+    /// (see BaseAllocationSystem); the fields below are server-local mirrors.
+    /// </summary>
     public struct SpawnerData : IComponentData
     {
         /// <summary>
@@ -16,13 +26,10 @@ namespace FourCorners.Scripts.Components.Spawner
         public float SpawnInterval;
         public float Timer;
 
-        /// <summary>
-        /// Set by BaseAllocationSystem when the owning PlayerBase is activated.
-        /// Kept as a [GhostField] so client-side systems can react to spawner activation
-        /// without needing to traverse the PlayerBase hierarchy.
-        /// Server-side activation logic uses PlayerBase.IsActive (via lookup) as the authority.
-        /// </summary>
-        [GhostField] public int NetworkId;
-        [GhostField] public bool IsActive;
+        /// <summary>NetworkId of the owning player, or 0 when the corner is unclaimed.</summary>
+        public int NetworkId;
+
+        /// <summary>Mirror of PlayerBase.IsActive. Never gate simulation on this — gate on the base.</summary>
+        public bool IsActive;
     }
 }

@@ -13,9 +13,15 @@ using Unity.Transforms;
 
 namespace FourCorners.Scripts.Systems.Spawner
 {
+    /// <summary>
+    /// Drains each spawner's MinionSpawnRequest buffer into real minion entities.
+    ///
+    /// No [UpdateAfter(SpawnerSystem)]: requests arrive via the EndSimulation ECB, so they are
+    /// never visible in the frame they were queued. The one-frame lag is inherent to the ECB,
+    /// not something intra-frame ordering can remove.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(SpawnerSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     public partial struct MinionSpawningSystem : ISystem
     {
@@ -60,16 +66,13 @@ namespace FourCorners.Scripts.Systems.Spawner
                 _lastPrefabCount = currentPrefabCount;
             }
 
-            var prefabLookup = SystemAPI.GetComponentLookup<MinionPrefabDescriptor>(true);
-            var pathLookup = SystemAPI.GetBufferLookup<PathWaypoint>(true);
-            var playerBaseLookup = SystemAPI.GetComponentLookup<PlayerBase>(true);
-
             var spawnJob = new ProcessSpawningJob
             {
                 ModelTypeToPrefab = _modelTypeToPrefab,
-                PrefabLookup = prefabLookup,
-                PathLookup = pathLookup,
-                PlayerBaseLookup = playerBaseLookup,
+                PrefabLookup = SystemAPI.GetComponentLookup<MinionPrefabDescriptor>(true),
+                PathLookup = SystemAPI.GetBufferLookup<PathWaypoint>(true),
+                PlayerBaseLookup = SystemAPI.GetComponentLookup<PlayerBase>(true),
+                MinionLookup = SystemAPI.GetComponentLookup<MinionData>(true),
                 Ecb = ecb,
                 Area = area,
                 Seed = _random.NextUInt()
@@ -115,6 +118,9 @@ namespace FourCorners.Scripts.Systems.Spawner
         [ReadOnly] public BufferLookup<PathWaypoint> PathLookup;
         [ReadOnly] public ComponentLookup<PlayerBase> PlayerBaseLookup;
 
+        /// <summary>Reads the prefab's baked MinionData so authored stats survive spawning.</summary>
+        [ReadOnly] public ComponentLookup<MinionData> MinionLookup;
+
         public EntityCommandBuffer.ParallelWriter Ecb;
         public WanderArea Area;
         public uint Seed;
@@ -155,18 +161,20 @@ namespace FourCorners.Scripts.Systems.Spawner
                             }
 
                             Ecb.SetComponent(sortKey, instance, LocalTransform.FromPosition(request.Position));
-                            Ecb.SetComponent(sortKey, instance, new MinionData
-                            {
-                                TeamNumber = teamNumber,
-                                TeamColor = (TeamColor)teamNumber,
-                                Speed = 2f,
-                                Target = new float3(
-                                    random.NextFloat(Area.MinArea.x, Area.MaxArea.x),
-                                    0,
-                                    random.NextFloat(Area.MinArea.z, Area.MaxArea.z)),
-                                RandomSeed = random.NextUInt(),
-                                Cooldown = 2f
-                            });
+
+                            // Start from the prefab's baked stats and override only what is
+                            // genuinely per-instance. Rebuilding MinionData from scratch here
+                            // hardcoded Speed and Cooldown to 2f, which made the corresponding
+                            // MinionAuthoring inspector fields have no runtime effect at all.
+                            MinionLookup.TryGetComponent(prefabComponent.Prefab, out var minion);
+                            minion.TeamNumber = teamNumber;
+                            minion.RandomSeed = random.NextUInt();
+                            minion.Target = new float3(
+                                random.NextFloat(Area.MinArea.x, Area.MaxArea.x),
+                                0,
+                                random.NextFloat(Area.MinArea.z, Area.MaxArea.z));
+
+                            Ecb.SetComponent(sortKey, instance, minion);
                         }
                     }
                 }

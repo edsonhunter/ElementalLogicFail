@@ -1,4 +1,3 @@
-using System;
 using FourCorners.Scripts.Manager.Interface;
 using FourCorners.Scripts.Scenes.Interface;
 using FourCorners.Scripts.Services.Interface;
@@ -15,27 +14,28 @@ namespace FourCorners.Scripts.Scenes
     ///   2. LobbyScreenUI subscribes to ISystemBridgeService.OnLobbyStateUpdate (ECS → UI).
     ///   3. Host presses Start → bridge.SendStartGameRequest() → server validates.
     ///   4. Server broadcasts MatchStartedRpc to ALL clients.
-    ///   5. ClientMatchStartedSystem fires bridge.OnMatchStarted on every client.
+    ///   5. ClientMatchStartedSystem raises MatchStartedTag; BridgeNotificationSystem turns that
+    ///      into bridge.OnMatchStarted in the presentation client world only.
     ///   6. OnMatchStarted calls NavigateToGameplay() which transitions to GameplayScene.
     /// </summary>
     public class LobbySceneController : BaseScene<LobbyData>
     {
         [field: SerializeField] private LobbyScreenUI lobbyScreenUI;
 
-        ISystemBridgeService systemBridgeService;
-        event Action<int,bool> OnLobbyStateUpdate;
+        private ISystemBridgeService _systemBridgeService;
+
         protected override void Loaded()
         {
-            systemBridgeService = GetService<ISystemBridgeService>();
+            _systemBridgeService = GetService<ISystemBridgeService>();
 
             // Subscribe to the match-started broadcast so ALL clients transition together.
-            systemBridgeService.OnMatchStarted += NavigateToGameplay;
-            systemBridgeService.OnLobbyStateUpdate += LobbyUpdate;
+            _systemBridgeService.OnMatchStarted += NavigateToGameplay;
+            _systemBridgeService.OnLobbyStateUpdate += LobbyUpdate;
+            _systemBridgeService.OnJoinRejected += JoinRejected;
 
             lobbyScreenUI.Init(
-                systemBridgeService.SendStartGameRequest,
-                onStart: () => { /* Start is handled by ClientMatchStartedSystem via OnMatchStarted */ },
-                onExit:  ExitLobby);
+                _systemBridgeService.SendStartGameRequest,
+                onExit: ExitLobby);
         }
 
         private void LobbyUpdate(LobbyStateUpdateEvent obj)
@@ -43,11 +43,23 @@ namespace FourCorners.Scripts.Scenes
             lobbyScreenUI.UpdateLobbyState(obj.PlayerCount, obj.IsHost);
         }
 
+        private void JoinRejected()
+        {
+            UnityEngine.Debug.LogWarning("[LobbySceneController] Join rejected — every corner is occupied.");
+            lobbyScreenUI.ShowJoinRejected();
+        }
+
         protected override void Unload()
         {
-            // Unsubscribe to prevent stale callbacks if the scene is reloaded.
-            var bridge = GetService<ISystemBridgeService>();
-            bridge.OnMatchStarted -= NavigateToGameplay;
+            // Both subscriptions must be released. Leaving OnLobbyStateUpdate attached kept a
+            // destroyed controller alive and threw MissingReferenceException from
+            // LobbyUpdate() on lobby re-entry.
+            if (_systemBridgeService == null) return;
+
+            _systemBridgeService.OnMatchStarted -= NavigateToGameplay;
+            _systemBridgeService.OnLobbyStateUpdate -= LobbyUpdate;
+            _systemBridgeService.OnJoinRejected -= JoinRejected;
+            _systemBridgeService = null;
         }
 
         // ──────────────────────────────────────────────────────────────────────────

@@ -22,8 +22,11 @@ namespace FourCorners.Scripts.Systems.Spawner
     [UpdateAfter(typeof(ServerStreamReadySystem))]
     public partial struct BaseAllocationSystem : ISystem
     {
+        private const int YieldLogInterval = 120;
+
         private EntityQuery _baseQuery;
         private EntityQuery _spawnerQuery;
+        private int _framesYielded;
 
         public void OnCreate(ref SystemState state)
         {
@@ -72,13 +75,15 @@ namespace FourCorners.Scripts.Systems.Spawner
                     {
                         baseData.IsActive = true;
                         baseData.NetworkId = playerId;
+                        baseData.Race = allocation.ValueRO.ApprovedRace;
                         baseLookup[candidate] = baseData;
 
                         baseEntity = candidate;
                         assigned = true;
 
                         UnityEngine.Debug.Log(
-                            $"[BaseAllocationSystem] Activated PlayerBase Team={approvedTeam} for NetworkId={playerId}");
+                            $"[BaseAllocationSystem] Activated PlayerBase Team={approvedTeam} " +
+                            $"Race={baseData.Race} for NetworkId={playerId}");
                         break;
                     }
                 }
@@ -101,14 +106,31 @@ namespace FourCorners.Scripts.Systems.Spawner
 
                     // Only consume the allocation request once the base was successfully activated
                     ecb.RemoveComponent<PendingBaseAllocation>(connectionEntity);
+                    _framesYielded = 0;
                 }
                 else
                 {
-                    // Soft log: we yield execution and retry next frame, as the SubScene map
-                    // might still be streaming asynchronously.
-                    UnityEngine.Debug.LogWarning(
-                        $"[BaseAllocationSystem] Yielding Base Allocation for Team={approvedTeam} NetworkId={playerId}. " +
-                        "Awaiting PlayerBase instantiation from SubScene streaming.");
+                    // We yield and retry next frame — the SubScene map may still be streaming.
+                    // Throttled: this used to fire every frame, drowning the real cause.
+                    // Reports which bases actually exist so a missing/duplicate corner or a
+                    // stale baked TeamNumber is visible instead of just "nothing happened".
+                    _framesYielded++;
+                    if (_framesYielded % YieldLogInterval == 1)
+                    {
+                        var available = new FixedString128Bytes();
+                        foreach (var candidate in bases)
+                        {
+                            if (!baseLookup.TryGetComponent(candidate, out var baseData)) continue;
+                            available.Append((int)baseData.TeamNumber);
+                            available.Append(baseData.IsActive ? '*' : ' ');
+                        }
+
+                        UnityEngine.Debug.LogWarning(
+                            $"[BaseAllocationSystem] Yielding allocation for Team={approvedTeam} NetworkId={playerId} " +
+                            $"after {_framesYielded} frames. Bases present (team, '*'=already active): [{available}]. " +
+                            "If this never resolves, the corner's baked TeamNumber does not match, " +
+                            "or the SubScene has not streamed into the server world.");
+                    }
                 }
             }
 

@@ -15,11 +15,7 @@ namespace FourCorners.Scripts.Authoring
             {
                 var entity = GetEntity(TransformUsageFlags.Dynamic);
 
-                AddComponent(entity, new PathFollower
-                {
-                    CurrentIndex = 0,
-                    IsReverse = false
-                });
+                AddComponent(entity, new PathFollower { CurrentIndex = 0 });
 
                 var buffer = AddBuffer<PathWaypoint>(entity);
                 if (authoring.Waypoints != null)
