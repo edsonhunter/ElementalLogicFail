@@ -43,6 +43,16 @@ namespace FourCorners.Scripts.Systems.Spawner
 
         public void OnUpdate(ref SystemState state)
         {
+            // This system mutates PlayerBase and SpawnerData from the MAIN THREAD via
+            // ComponentLookup, while MinionSpawningSystem's ProcessSpawningJob reads
+            // PlayerBase from a scheduled job. Writing without completing that job first
+            // throws InvalidOperationException from the safety system every frame.
+            //
+            // The sync point is acceptable here specifically because RequireForUpdate
+            // <PendingBaseAllocation> means this runs only for the frame or two around a
+            // player claiming a corner — not every frame.
+            state.CompleteDependency();
+
             var bases = _baseQuery.ToEntityArray(Allocator.Temp);
             var spawners = _spawnerQuery.ToEntityArray(Allocator.Temp);
 

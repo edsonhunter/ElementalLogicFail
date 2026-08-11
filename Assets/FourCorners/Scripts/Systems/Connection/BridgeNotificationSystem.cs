@@ -24,21 +24,18 @@ namespace FourCorners.Scripts.Systems.Connection
         private uint _lastLobbyVersion;
         private bool _matchStartedFired;
         private bool _joinRejectedFired;
+        private bool _worldResolved;
 
-        protected override void OnCreate()
-        {
-            // Guard against a second full client world in-process ever claiming the UI.
-            if (World != ClientServerBootstrap.ClientWorld)
-            {
-                Enabled = false;
-                return;
-            }
-
-            EntityManager.CreateEntity(typeof(PresentationClientTag));
-        }
+        // No OnCreate world check. ClientServerBootstrap.CreateClientWorld creates its systems
+        // (running OnCreate) BEFORE it does ClientWorlds.Add(world), and ClientWorld reads
+        // ClientWorlds[0] — so ClientServerBootstrap.ClientWorld is still null at that point.
+        // Comparing against it there disabled this system permanently in every world, which
+        // meant PresentationClientTag was never created and no lobby update ever reached the UI.
 
         protected override void OnUpdate()
         {
+            if (!ResolvePresentationWorld()) return;
+
             // Pulled lazily: worlds are created at application start, but the service is only
             // registered once the MainMenu scene loads. See ClientBridgeRegistry.
             _service ??= ClientBridgeRegistry.Service;
@@ -66,6 +63,35 @@ namespace FourCorners.Scripts.Systems.Connection
                 _joinRejectedFired = true;
                 _service.OnJoinRejected?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// Decides once, on the first update where Netcode has finished registering worlds,
+        /// whether this world owns the UI — and claims it with <see cref="PresentationClientTag"/>.
+        ///
+        /// Deferred rather than done in OnCreate because ClientServerBootstrap.ClientWorld is
+        /// not populated until after system creation completes.
+        /// </summary>
+        private bool ResolvePresentationWorld()
+        {
+            if (_worldResolved) return true;
+
+            var presentationWorld = ClientServerBootstrap.ClientWorld;
+            if (presentationWorld == null) return false; // registration not finished yet
+
+            _worldResolved = true;
+
+            // Guard against a second full client world in-process ever claiming the UI.
+            if (World != presentationWorld)
+            {
+                Enabled = false;
+                return false;
+            }
+
+            if (!SystemAPI.HasSingleton<PresentationClientTag>())
+                EntityManager.CreateEntity(typeof(PresentationClientTag));
+
+            return true;
         }
     }
 }

@@ -31,7 +31,30 @@ namespace FourCorners.Scripts.Services
 
         private EntityQuery _wanderAreaQuery;
         private EntityQuery _sceneLoadedQuery;
+        private EntityQuery _lobbyStateQuery;
         private World _cachedWorld;
+
+        /// <inheritdoc />
+        public bool TryGetLobbyState(out LobbyStateUpdateEvent state)
+        {
+            state = default;
+
+            if (!TryGetQueries(out _)) return false;
+            if (_lobbyStateQuery.IsEmpty) return false;
+
+            var snapshot = _lobbyStateQuery.GetSingleton<LobbyStateSnapshot>();
+
+            // Version 0 means the server has not sent a lobby update yet, so IsHost/PlayerCount
+            // are not meaningful — do not let the UI render defaults as if they were real.
+            if (snapshot.Version == 0) return false;
+
+            state = new LobbyStateUpdateEvent
+            {
+                IsHost = snapshot.IsHost,
+                PlayerCount = snapshot.PlayerCount
+            };
+            return true;
+        }
 
         /// <inheritdoc />
         public bool TryGetMapBounds(out Vector3 min, out Vector3 max)
@@ -127,6 +150,7 @@ namespace FourCorners.Scripts.Services
                 _cachedWorld = world;
                 _wanderAreaQuery = world.EntityManager.CreateEntityQuery(typeof(WanderArea));
                 _sceneLoadedQuery = world.EntityManager.CreateEntityQuery(typeof(SceneLoadedTag));
+                _lobbyStateQuery = world.EntityManager.CreateEntityQuery(typeof(LobbyStateSnapshot));
             }
 
             return true;

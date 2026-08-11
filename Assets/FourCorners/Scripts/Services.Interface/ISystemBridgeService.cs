@@ -34,6 +34,15 @@ namespace FourCorners.Scripts.Services.Interface
         Action<LobbyStateUpdateEvent> OnLobbyStateUpdate { get; set; }
 
         /// <summary>
+        /// Current lobby state, or false if the server has not sent one yet.
+        ///
+        /// OnLobbyStateUpdate is edge-triggered, and the first update arrives while the client
+        /// is still on the connection screen — so a subscriber attaching later (the lobby scene)
+        /// misses it entirely. Late subscribers must pull once after subscribing.
+        /// </summary>
+        bool TryGetLobbyState(out LobbyStateUpdateEvent state);
+
+        /// <summary>
         /// Fired when the server broadcasts MatchStartedRpc.
         /// Every client in the lobby subscribes to this to transition → GameplayScene.
         /// </summary>

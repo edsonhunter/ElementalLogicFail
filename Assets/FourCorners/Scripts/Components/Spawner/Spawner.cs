@@ -26,6 +26,15 @@ namespace FourCorners.Scripts.Components.Spawner
         public float SpawnInterval;
         public float Timer;
 
+        /// <summary>
+        /// Which of the owning base's three lanes this spawner walks (0, 1, 2).
+        ///
+        /// Each lane visits all enemy bases then returns home; the index only decides the
+        /// starting rotation, so the three spawners of a base fan out instead of overlapping.
+        /// Consumed by LaneBakingSystem.
+        /// </summary>
+        public int LaneIndex;
+
         /// <summary>NetworkId of the owning player, or 0 when the corner is unclaimed.</summary>
         public int NetworkId;
 

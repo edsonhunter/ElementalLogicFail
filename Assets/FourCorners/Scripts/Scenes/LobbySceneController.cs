@@ -36,6 +36,12 @@ namespace FourCorners.Scripts.Scenes
             lobbyScreenUI.Init(
                 _systemBridgeService.SendStartGameRequest,
                 onExit: ExitLobby);
+
+            // The first LobbyStateUpdateRpc lands while we are still on the connection screen,
+            // so subscribing alone would leave this scene showing Init()'s placeholder count
+            // until some *other* player joins. Pull whatever the server has already told us.
+            if (_systemBridgeService.TryGetLobbyState(out var current))
+                LobbyUpdate(current);
         }
 
         private void LobbyUpdate(LobbyStateUpdateEvent obj)

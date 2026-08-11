@@ -32,25 +32,24 @@ namespace FourCorners.Scripts.Systems.Spawner
     {
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<RaceCatalog>();
+            state.RequireForUpdate<RaceBaseVisual>();
             state.RequireForUpdate<PlayerBase>();
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
-            var catalog = SystemAPI.GetSingleton<RaceCatalog>();
-            if (!catalog.Value.IsCreated) return;
-
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
-            SpawnMissingVisuals(ref state, catalog, ecb);
+            SpawnMissingVisuals(ref state, ecb);
             CleanUpReleasedVisuals(ref state, ecb);
         }
 
-        private void SpawnMissingVisuals(ref SystemState state, RaceCatalog catalog, EntityCommandBuffer ecb)
+        private void SpawnMissingVisuals(ref SystemState state, EntityCommandBuffer ecb)
         {
+            var visuals = SystemAPI.GetSingletonBuffer<RaceBaseVisual>(isReadOnly: true);
+
             foreach (var (playerBase, baseEntity) in
                      SystemAPI.Query<RefRO<PlayerBase>>()
                          .WithNone<SpawnedBaseVisual>()
@@ -58,14 +57,26 @@ namespace FourCorners.Scripts.Systems.Spawner
             {
                 if (!playerBase.ValueRO.IsActive) continue;
 
-                ref var blob = ref catalog.Value.Value;
-                int index = blob.IndexOf(playerBase.ValueRO.Race);
-                if (index < 0) continue;
+                var visualPrefab = Entity.Null;
+                for (int i = 0; i < visuals.Length; i++)
+                {
+                    if (visuals[i].Race != playerBase.ValueRO.Race) continue;
+                    visualPrefab = visuals[i].Prefab;
+                    break;
+                }
 
-                // By ref: RaceDefinition holds a BlobArray and may not be copied out of blob
-                // storage. Only the prefab Entity is read out here, which is safe to copy.
-                var visualPrefab = blob.Races[index].BaseVisualPrefab;
                 if (visualPrefab == Entity.Null) continue;
+
+                // Defensive: a bad prefab reference here aborts the ENTIRE EndSimulation ECB
+                // playback, silently dropping unrelated systems' commands — which is how a
+                // broken visual reference previously stopped minions from receiving their lane.
+                if (!state.EntityManager.Exists(visualPrefab))
+                {
+                    UnityEngine.Debug.LogError(
+                        $"[BaseRaceVisualSystem] Race {playerBase.ValueRO.Race} has an invalid base " +
+                        "visual prefab entity. Skipping so ECB playback is not aborted.");
+                    continue;
+                }
 
                 var instance = ecb.Instantiate(visualPrefab);
                 ecb.AddComponent(instance, new Parent { Value = baseEntity });

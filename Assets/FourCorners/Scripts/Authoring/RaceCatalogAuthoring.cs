@@ -58,9 +58,6 @@ namespace FourCorners.Scripts.Authoring
                     }
 
                     raceArray[i].Race = entry.race;
-                    raceArray[i].BaseVisualPrefab = entry.baseVisualPrefab != null
-                        ? GetEntity(entry.baseVisualPrefab, TransformUsageFlags.Dynamic)
-                        : Entity.Null;
 
                     int rosterCount = entry.roster?.Count ?? 0;
                     var rosterArray = builder.Allocate(ref raceArray[i].Roster, rosterCount);
@@ -75,6 +72,37 @@ namespace FourCorners.Scripts.Authoring
 
                 var entity = GetEntity(TransformUsageFlags.None);
                 AddComponent(entity, new RaceCatalog { Value = blob });
+
+                // Prefab entities go in a buffer, never in the blob — see RaceBaseVisual.
+                var visuals = AddBuffer<RaceBaseVisual>(entity);
+                foreach (var entry in authoring.races)
+                {
+                    if (entry.baseVisualPrefab == null)
+                    {
+                        Debug.LogWarning(
+                            $"[RaceCatalogAuthoring] Race '{entry.race}' has no base visual prefab; " +
+                            "that corner will render nothing when claimed.", authoring);
+                        continue;
+                    }
+
+                    // Must be a prefab ASSET. Referencing an object placed in the subscene bakes a
+                    // live scene entity instead of a prefab, so every race renders on every corner.
+                    if (entry.baseVisualPrefab.scene.IsValid())
+                    {
+                        Debug.LogError(
+                            $"[RaceCatalogAuthoring] Race '{entry.race}' base visual points at a scene " +
+                            $"object ('{entry.baseVisualPrefab.name}'), not a prefab asset. Drag it from " +
+                            "the Project window instead, and delete the copy in the Hierarchy.",
+                            authoring);
+                        continue;
+                    }
+
+                    visuals.Add(new RaceBaseVisual
+                    {
+                        Race = entry.race,
+                        Prefab = GetEntity(entry.baseVisualPrefab, TransformUsageFlags.Dynamic)
+                    });
+                }
             }
         }
     }

@@ -10,6 +10,14 @@ namespace FourCorners.Scripts.Authoring.Spawner
         public List<UnitModelType> UnitsToSpawn;
         public int spawnAmount = 5;
         public float spawnInterval = 2.0f;
+
+        [Tooltip("Which of this base's three lanes to walk (0, 1 or 2). Lanes are generated " +
+                 "automatically from the positions of the four bases — see LaneBakingSystem.")]
+        public int laneIndex;
+
+        [Tooltip("OPTIONAL manual lane. Leave empty to use the generated lane. Only fill this in " +
+                 "to hand-author an unusual route; any entry here disables generation for this " +
+                 "spawner.")]
         public List<Transform> Waypoints;
 
         public class SpawnerAuthoringBaker : Baker<SpawnerAuthoring>
@@ -43,7 +51,8 @@ namespace FourCorners.Scripts.Authoring.Spawner
                     SpawnAmount = authoring.spawnAmount,
                     SpawnInterval = authoring.spawnInterval,
                     Timer = 0,
-                    IsActive = false
+                    IsActive = false,
+                    LaneIndex = authoring.laneIndex
                 });
 
                 // Unit prefab types this spawner can produce

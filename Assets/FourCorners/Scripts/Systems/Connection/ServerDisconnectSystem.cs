@@ -78,7 +78,8 @@ namespace FourCorners.Scripts.Systems.Connection
                 lobbyChanged = true;
 
                 UnityEngine.Debug.Log(
-                    $"[ServerDisconnectSystem] NetworkId={networkId} disconnected. " +
+                    $"[ServerDisconnectSystem] NetworkId={networkId} disconnected " +
+                    $"(reason: {connectionState.ValueRO.DisconnectReason}). " +
                     $"Slot released. {playerBuffer.Length} player(s) remain.");
             }
 
@@ -133,6 +134,7 @@ namespace FourCorners.Scripts.Systems.Connection
 
             if (releasedTeam == -1) return;
 
+            state.CompleteDependency();
             var team = (TeamNumber)releasedTeam;
             var baseLookup = SystemAPI.GetComponentLookup<PlayerBase>(isReadOnly: false);
             var spawnerLookup = SystemAPI.GetComponentLookup<SpawnerData>(isReadOnly: false);
