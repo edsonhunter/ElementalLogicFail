@@ -101,7 +101,11 @@ namespace FourCorners.Scripts.Systems.Connection
                 UnityEngine.Debug.Log("[ServerDisconnectSystem] Lobby empty — match reset to WaitingForPlayers.");
             }
 
-            ecb.SetComponent(matchStateEntity, matchState);
+            // Written immediately, not through the ECB. ServerAcceptGameSystem runs later in the
+            // same frame and does its own read-modify-write of MatchState; deferring both to
+            // end-of-frame playback let a same-frame join replay a pre-disconnect copy over the
+            // host-vacate and phase reset below.
+            SystemAPI.SetComponent(matchStateEntity, matchState);
             LobbyBroadcast.SendToAll(ref ecb, playerBuffer, matchState.HostNetworkId);
         }
 

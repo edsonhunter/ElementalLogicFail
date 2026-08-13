@@ -28,6 +28,20 @@ namespace FourCorners.Scripts.Services.Interface
         void NotifyClientSceneReady();
 
         /// <summary>
+        /// Unloads every entity scene from the client and server worlds.
+        ///
+        /// SubScene's own teardown unloads only the *first* scene entity matching its GUID, so a
+        /// copy that ever got loaded twice can never be recovered from: every later GetSingleton
+        /// against baked data (RaceCatalog, WanderArea) throws "there are 2 entities". This is
+        /// the sweep that clears the remainder.
+        ///
+        /// Call it only when no match is in progress. Unloading a subscene that holds prespawned
+        /// ghosts while a connection is still in-game makes the ghost collection reference a
+        /// prefab that no longer exists ("PrespawnSceneList ... ENTITY_NOT_FOUND").
+        /// </summary>
+        void UnloadEntityScenes();
+
+        /// <summary>
         /// Fired when the server's lobby state changes.
         /// UI subscribes to update player count and show/hide the Start button.
         /// </summary>
@@ -47,6 +61,22 @@ namespace FourCorners.Scripts.Services.Interface
         /// Every client in the lobby subscribes to this to transition → GameplayScene.
         /// </summary>
         Action OnMatchStarted { get; set; }
+
+        /// <summary>
+        /// True once this client knows the match is running.
+        ///
+        /// OnMatchStarted has the same edge-triggered problem as OnLobbyStateUpdate, and it is
+        /// worse for a player joining a match that already started: the server answers their join
+        /// with MatchStartedRpc immediately, so the event fires while they are still on the
+        /// connection screen. The lobby must pull this after subscribing or it will wait forever.
+        /// </summary>
+        bool IsMatchStarted { get; }
+
+        /// <summary>
+        /// Fired when this client loses the server — it left, was dropped, or the host ended the
+        /// match. Scenes that only make sense while connected subscribe to bail out to the menu.
+        /// </summary>
+        Action OnDisconnected { get; set; }
 
         /// <summary>
         /// Fired when the server refuses the join because every corner is occupied.

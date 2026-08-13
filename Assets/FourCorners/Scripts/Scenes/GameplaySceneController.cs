@@ -1,16 +1,33 @@
 using System.Threading.Tasks;
 using FourCorners.Scripts.Controller;
+using FourCorners.Scripts.Manager.Interface;
 using FourCorners.Scripts.Manager.Interface.Camera;
 using FourCorners.Scripts.Scenes.Interface;
 using FourCorners.Scripts.Services.Interface;
+using FourCorners.Scripts.View;
 using UnityEngine;
 
 namespace FourCorners.Scripts.Scenes
 {
+    /// <summary>
+    /// Scene controller for the match itself.
+    ///
+    /// Two ways out, both landing on the MainMenu:
+    ///   - the player presses Leave, which disconnects them (see ExitLobby for the same shape);
+    ///   - the connection drops under us — the host left, or we were dropped — which arrives as
+    ///     ISystemBridgeService.OnDisconnected. Without that path a client whose host quit sits
+    ///     in a frozen scene with no server behind it.
+    /// </summary>
     public class GameplaySceneController : BaseScene<GameplayData>
     {
         [SerializeField] private CameraController cameraController;
+        [SerializeField] private GameplayScreenUI gameplayScreenUI;
+
+        private ISystemBridgeService _systemBridgeService;
         private (Vector3 min, Vector3 max) _bounds;
+
+        /// <summary>Leaving and being dropped can race; only the first one gets to navigate.</summary>
+        private bool _leaving;
 
         protected override Task Loading()
         {
@@ -21,6 +38,28 @@ namespace FourCorners.Scripts.Scenes
         {
             var cameraManager = GetManager<ICameraManager>();
             cameraController.Init(cameraManager, _bounds.min, _bounds.max);
+
+            _systemBridgeService = GetService<ISystemBridgeService>();
+            _systemBridgeService.OnDisconnected += ConnectionLost;
+
+            gameplayScreenUI.Init(onLeave: LeaveMatch);
+        }
+
+        protected override void Unload()
+        {
+            // Mandatory, not tidiness: LobbySceneController's Unload comment records the
+            // MissingReferenceException a leaked bridge subscription caused there.
+            if (_systemBridgeService == null) return;
+
+            _systemBridgeService.OnDisconnected -= ConnectionLost;
+            _systemBridgeService = null;
+
+            // Deliberately NOT unloading the entity scenes here. This runs synchronously, before
+            // the scene swap even starts, so the connection can still be NetworkStreamInGame —
+            // and pulling a subscene containing prespawned ghosts out from under a live ghost
+            // collection produces "ghost ... does not have a valid prefab on the client
+            // (PrespawnSceneList)". MainMenuSceneController sweeps up instead, by which point
+            // the connection is gone and SubScene's own teardown has already run.
         }
 
         private async Task WaitAndInitCameraAsync()
@@ -37,6 +76,11 @@ namespace FourCorners.Scripts.Scenes
             while (!service.TryGetMapBounds(out min, out max))
             {
                 await Task.Yield();
+
+                // Leaving during the load unloads the entity scenes, so the bounds will never
+                // arrive — without this the loop spins forever on a destroyed controller and
+                // then throws from cameraController.Setup().
+                if (this == null || _leaving) return;
             }
 
             _bounds = (min, max);
@@ -45,7 +89,47 @@ namespace FourCorners.Scripts.Scenes
             // Notify systems (e.g. ClientStreamReadySystem) that the scene is fully baked
             service.NotifyClientSceneReady();
         }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Navigation
+        // ──────────────────────────────────────────────────────────────────────────
+
+        private void LeaveMatch()
+        {
+            if (_leaving) return;
+            _leaving = true;
+
+            UnityEngine.Debug.Log("[GameplaySceneController] Leaving the match.");
+
+            // Mirrors LobbySceneController.ExitLobby. On the host this also drops every remote
+            // connection — the server world lives in this process, so the match cannot outlive it.
+            GetService<IMultiplayerService>().Disconnect();
+            GetManager<ISceneManager>().LoadScene(new MainMenuData());
+        }
+
+        /// <summary>
+        /// The host left, or we were dropped. Deferred by a frame because OnDisconnected is
+        /// raised from inside BridgeNotificationSystem's update, and leaving the scene runs
+        /// Unload() — which unloads the entity scenes. Doing that structural work in the middle
+        /// of SimulationSystemGroup's own iteration is asking for trouble.
+        /// </summary>
+        private void ConnectionLost()
+        {
+            if (_leaving) return;
+            _leaving = true;
+
+            UnityEngine.Debug.Log("[GameplaySceneController] Connection lost. Returning to the main menu.");
+            _ = ReturnToMainMenuNextFrameAsync();
+        }
+
+        private async Task ReturnToMainMenuNextFrameAsync()
+        {
+            await Task.Yield();
+            if (this == null) return;
+
+            GetManager<ISceneManager>().LoadScene(new MainMenuData());
+        }
     }
-    
+
     public class GameplayData : ISceneData { }
 }

@@ -4,8 +4,10 @@ using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Request;
 using FourCorners.Scripts.Components.Team;
 using FourCorners.Scripts.Services.Interface;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
+using Unity.Scenes;
 using UnityEngine;
 
 namespace FourCorners.Scripts.Services
@@ -29,10 +31,17 @@ namespace FourCorners.Scripts.Services
         /// <inheritdoc />
         public Action OnJoinRejected { get; set; }
 
+        /// <inheritdoc />
+        public Action OnDisconnected { get; set; }
+
         private EntityQuery _wanderAreaQuery;
         private EntityQuery _sceneLoadedQuery;
         private EntityQuery _lobbyStateQuery;
+        private EntityQuery _matchStartedQuery;
         private World _cachedWorld;
+
+        /// <inheritdoc />
+        public bool IsMatchStarted => TryGetQueries(out _) && !_matchStartedQuery.IsEmpty;
 
         /// <inheritdoc />
         public bool TryGetLobbyState(out LobbyStateUpdateEvent state)
@@ -85,6 +94,36 @@ namespace FourCorners.Scripts.Services
 
             world.EntityManager.CreateEntity(typeof(SceneLoadedTag));
             Debug.Log("[SystemBridgeService] SceneLoadedTag injected into the presentation client world.");
+        }
+
+        /// <inheritdoc />
+        public void UnloadEntityScenes()
+        {
+            UnloadEntityScenes(ClientServerBootstrap.ClientWorld);
+            UnloadEntityScenes(ClientServerBootstrap.ServerWorld);
+        }
+
+        /// <summary>
+        /// Unloads every entity scene in one world, rather than one match by GUID the way
+        /// SubScene.OnDisable does. GameplaySubscene is the only entity scene in the project, and
+        /// it is meaningful only while GameplayScene is loaded, so "all of them" is the honest
+        /// scope — and it is the only formulation that clears a duplicate if one ever appears.
+        /// </summary>
+        private static void UnloadEntityScenes(World world)
+        {
+            if (world is not { IsCreated: true }) return;
+
+            using var query = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<SceneReference>());
+            using var sceneEntities = query.ToEntityArray(Allocator.Temp);
+            if (sceneEntities.Length == 0) return;
+
+            foreach (var sceneEntity in sceneEntities)
+            {
+                SceneSystem.UnloadScene(
+                    world.Unmanaged, sceneEntity, SceneSystem.UnloadParameters.DestroyMetaEntities);
+            }
+
+            Debug.Log($"[SystemBridgeService] Unloaded {sceneEntities.Length} entity scene(s) from '{world.Name}'.");
         }
 
         /// <inheritdoc />
@@ -151,6 +190,7 @@ namespace FourCorners.Scripts.Services
                 _wanderAreaQuery = world.EntityManager.CreateEntityQuery(typeof(WanderArea));
                 _sceneLoadedQuery = world.EntityManager.CreateEntityQuery(typeof(SceneLoadedTag));
                 _lobbyStateQuery = world.EntityManager.CreateEntityQuery(typeof(LobbyStateSnapshot));
+                _matchStartedQuery = world.EntityManager.CreateEntityQuery(typeof(MatchStartedTag));
             }
 
             return true;

@@ -16,7 +16,15 @@ namespace FourCorners.Scripts.Scenes
 
         protected override Task Loading()
         {
-            GetService<ISystemBridgeService>().RegisterBridge();
+            var bridge = GetService<ISystemBridgeService>();
+            bridge.RegisterBridge();
+
+            // Arriving here means no match is in progress for this process, so nothing should
+            // still be holding the baked gameplay subscene. SubScene's own teardown has already
+            // run by now, but it only ever unloads one scene entity per GUID — so if a copy was
+            // ever loaded twice, this is what clears the remainder. A no-op on first boot.
+            bridge.UnloadEntityScenes();
+
             return Task.CompletedTask;
         }
 

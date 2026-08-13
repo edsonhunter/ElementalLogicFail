@@ -27,22 +27,30 @@ namespace FourCorners.Scripts.Systems.Connection
     public partial struct ClientSceneReadySystem : ISystem
     {
         private EntityQuery _sceneQuery;
+        private EntityQuery _alreadyReadyQuery;
 
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<MatchStartedTag>();
 
-            // Runs only between "match started" and "ready" — self-retiring, no manual disable.
-            var gate = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<MatchStartedTag>()
-                .WithNone<ClientSceneReady>();
-            state.RequireForUpdate(state.GetEntityQuery(gate));
+            // The gate used to be WithAll<MatchStartedTag>().WithNone<ClientSceneReady>() and was
+            // commented as self-retiring. It is not: the two live on separate entities, so the
+            // MatchStartedTag entity never gains ClientSceneReady and the query matches forever —
+            // this system was minting a fresh ClientSceneReady entity every single frame. Nothing
+            // noticed until something asked for it as a singleton and got hundreds of instances.
+            _alreadyReadyQuery = state.GetEntityQuery(ComponentType.ReadOnly<ClientSceneReady>());
 
             _sceneQuery = state.GetEntityQuery(ComponentType.ReadOnly<SceneReference>());
         }
 
         public void OnUpdate(ref SystemState state)
         {
+            // Deferred creation means this stays true for the rest of the frame it is recorded
+            // in, and false from the next one on — so exactly one entity is ever created per
+            // session. ClientDisconnectSystem clears it, which re-arms this for the next match.
+            if (!_alreadyReadyQuery.IsEmpty) return;
+
             if (SystemAPI.HasSingleton<PresentationClientTag>() && !IsPresentationSceneReady(ref state))
                 return;
 

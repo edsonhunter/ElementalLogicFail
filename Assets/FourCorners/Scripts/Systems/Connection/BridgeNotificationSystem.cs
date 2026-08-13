@@ -14,7 +14,8 @@ namespace FourCorners.Scripts.Systems.Connection
     /// tag instead of probing for this system, which keeps them Burst-compilable.
     ///
     /// Responsibility is deliberately narrow: observe simulation state, fan out to the UI.
-    /// It never mutates simulation state.
+    /// The single exception is consuming ClientDisconnectedTag, which is an event rather than a
+    /// state and has exactly one reader — this system.
     /// </summary>
     [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -22,15 +23,35 @@ namespace FourCorners.Scripts.Systems.Connection
     {
         private ISystemBridgeService _service;
         private uint _lastLobbyVersion;
-        private bool _matchStartedFired;
-        private bool _joinRejectedFired;
         private bool _worldResolved;
 
-        // No OnCreate world check. ClientServerBootstrap.CreateClientWorld creates its systems
-        // (running OnCreate) BEFORE it does ClientWorlds.Add(world), and ClientWorld reads
-        // ClientWorlds[0] — so ClientServerBootstrap.ClientWorld is still null at that point.
-        // Comparing against it there disabled this system permanently in every world, which
-        // meant PresentationClientTag was never created and no lobby update ever reached the UI.
+        // Edge-triggered on the tag's presence rather than latched "already fired once". A latch
+        // only re-arms if something explicitly clears it, so a single missed disconnect used to
+        // leave the player permanently unable to enter another match. Since ClientDisconnectSystem
+        // destroys these tags, presence going false→true is the honest signal for "again".
+        private bool _matchStartedPresent;
+        private bool _joinRejectedPresent;
+
+        private EntityQuery _matchStartedQuery;
+        private EntityQuery _joinRejectedQuery;
+        private EntityQuery _disconnectedQuery;
+
+        protected override void OnCreate()
+        {
+            // Queried rather than asked for as singletons: HasSingleton throws outright on a
+            // duplicate, and this system is the only route from simulation to the UI — if it
+            // dies, the player is stranded on whatever screen they happen to be looking at.
+            _matchStartedQuery = GetEntityQuery(ComponentType.ReadOnly<MatchStartedTag>());
+            _joinRejectedQuery = GetEntityQuery(ComponentType.ReadOnly<JoinRejectedTag>());
+            _disconnectedQuery = GetEntityQuery(ComponentType.ReadOnly<ClientDisconnectedTag>());
+        }
+
+        // Note OnCreate builds queries only — deliberately no world check there.
+        // ClientServerBootstrap.CreateClientWorld creates its systems (running OnCreate) BEFORE it
+        // does ClientWorlds.Add(world), and ClientWorld reads ClientWorlds[0] — so
+        // ClientServerBootstrap.ClientWorld is still null at that point. Comparing against it
+        // there disabled this system permanently in every world, which meant PresentationClientTag
+        // was never created and no lobby update ever reached the UI. See ResolvePresentationWorld.
 
         protected override void OnUpdate()
         {
@@ -52,17 +73,27 @@ namespace FourCorners.Scripts.Systems.Connection
                 });
             }
 
-            if (!_matchStartedFired && SystemAPI.HasSingleton<MatchStartedTag>())
-            {
-                _matchStartedFired = true;
+            bool matchStarted = !_matchStartedQuery.IsEmpty;
+            if (matchStarted && !_matchStartedPresent)
                 _service.OnMatchStarted?.Invoke();
-            }
+            _matchStartedPresent = matchStarted;
 
-            if (!_joinRejectedFired && SystemAPI.HasSingleton<JoinRejectedTag>())
-            {
-                _joinRejectedFired = true;
+            bool joinRejected = !_joinRejectedQuery.IsEmpty;
+            if (joinRejected && !_joinRejectedPresent)
                 _service.OnJoinRejected?.Invoke();
-            }
+            _joinRejectedPresent = joinRejected;
+
+            // Last, so a disconnect arriving on the same frame as a lobby update still lets that
+            // update through before the version is rewound for the next session.
+            if (_disconnectedQuery.IsEmpty) return;
+
+            // LobbyStateSnapshot is reset rather than destroyed, so its version restarts at 0 and
+            // would otherwise look unchanged to the comparison above.
+            _lastLobbyVersion = 0;
+
+            // Consumed here: unlike MatchStartedTag this marks an instant, not a state.
+            EntityManager.DestroyEntity(_disconnectedQuery);
+            _service.OnDisconnected?.Invoke();
         }
 
         /// <summary>

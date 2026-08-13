@@ -18,7 +18,25 @@ namespace FourCorners.Scripts.Services
 {
     public class MultiplayerService : IMultiplayerService
     {
-        public void Init() { }
+        /// <summary>
+        /// A process that just dies never sends a disconnect packet, so the server can only
+        /// notice by timing the connection out — which is why closing a client window used to
+        /// leave a ghost player holding a corner. Announcing the departure on the way out turns
+        /// that into an immediate, explicit disconnect.
+        ///
+        /// Application.quitting fires on Play-mode exit in the editor too, which is exactly the
+        /// case being tested with Multiplayer Play Mode virtual players.
+        /// </summary>
+        public MultiplayerService()
+        {
+            Application.quitting += OnApplicationQuitting;
+        }
+
+        private void OnApplicationQuitting()
+        {
+            Application.quitting -= OnApplicationQuitting;
+            Disconnect(flushImmediately: true);
+        }
 
         public async Task AuthenticateAsync()
         {
@@ -153,9 +171,11 @@ namespace FourCorners.Scripts.Services
                 var serverWorld = ClientServerBootstrap.ServerWorld;
                 var serverNetDebug = serverWorld.EntityManager.CreateEntityQuery(typeof(NetDebug)).GetSingleton<NetDebug>();
                 var driverStore = new NetworkDriverStore();
-                
-                var serverConstructor = new IPCAndSocketDriverConstructor();
-                serverConstructor.CreateServerDriver(serverWorld, ref driverStore, serverNetDebug);
+
+                // What IPCAndSocketDriverConstructor does, minus the constructor indirection, so
+                // the direct path gets the same shortened disconnect timeout as the relay path.
+                DefaultDriverBuilder.RegisterServerDriver(
+                    serverWorld, ref driverStore, serverNetDebug, NetworkSettingsFactory.ServerSettings());
 
                 var serverDriverQuery = serverWorld.EntityManager.CreateEntityQuery(typeof(NetworkStreamDriver));
                 serverDriverQuery.GetSingletonRW<NetworkStreamDriver>().ValueRW.ResetDriverStore(serverWorld.Unmanaged, ref driverStore);
@@ -166,9 +186,9 @@ namespace FourCorners.Scripts.Services
                 var clientWorld = ClientServerBootstrap.ClientWorld;
                 var clientNetDebug = clientWorld.EntityManager.CreateEntityQuery(typeof(NetDebug)).GetSingleton<NetDebug>();
                 var clientDriverStore = new NetworkDriverStore();
-                
-                var clientConstructor = new IPCAndSocketDriverConstructor();
-                clientConstructor.CreateClientDriver(clientWorld, ref clientDriverStore, clientNetDebug);
+
+                DefaultDriverBuilder.RegisterClientDriver(
+                    clientWorld, ref clientDriverStore, clientNetDebug, NetworkSettingsFactory.ClientSettings());
 
                 var clientDriverQuery = clientWorld.EntityManager.CreateEntityQuery(typeof(NetworkStreamDriver));
                 clientDriverQuery.GetSingletonRW<NetworkStreamDriver>().ValueRW.ResetDriverStore(clientWorld.Unmanaged, ref clientDriverStore);
@@ -204,9 +224,9 @@ namespace FourCorners.Scripts.Services
                 var clientWorld = ClientServerBootstrap.ClientWorld;
                 var clientNetDebug = clientWorld.EntityManager.CreateEntityQuery(typeof(NetDebug)).GetSingleton<NetDebug>();
                 var clientDriverStore = new NetworkDriverStore();
-                
-                var clientConstructor = new IPCAndSocketDriverConstructor();
-                clientConstructor.CreateClientDriver(clientWorld, ref clientDriverStore, clientNetDebug);
+
+                DefaultDriverBuilder.RegisterClientDriver(
+                    clientWorld, ref clientDriverStore, clientNetDebug, NetworkSettingsFactory.ClientSettings());
 
                 var clientDriverQuery = clientWorld.EntityManager.CreateEntityQuery(typeof(NetworkStreamDriver));
                 clientDriverQuery.GetSingletonRW<NetworkStreamDriver>().ValueRW.ResetDriverStore(clientWorld.Unmanaged, ref clientDriverStore);
@@ -223,12 +243,22 @@ namespace FourCorners.Scripts.Services
                 return Task.FromResult(false);
             }
         }
-        public void Disconnect()
-        {
-            Debug.Log("[MultiplayerService] Disconnecting from session.");
+        public void Disconnect() => Disconnect(flushImmediately: false);
 
-            RequestDisconnect(ClientServerBootstrap.ClientWorld);
-            RequestDisconnect(ClientServerBootstrap.ServerWorld);
+        /// <summary>
+        /// Closes every stream connection in both worlds.
+        /// </summary>
+        /// <param name="flushImmediately">
+        /// Pump each world once so the disconnect packet actually leaves this frame. Only needed
+        /// when no further frame is coming — see <see cref="OnApplicationQuitting"/>. During
+        /// normal play the next regular update does the same work for free.
+        /// </param>
+        public void Disconnect(bool flushImmediately)
+        {
+            Debug.Log($"[MultiplayerService] Disconnecting from session (flush={flushImmediately}).");
+
+            RequestDisconnect(ClientServerBootstrap.ClientWorld, flushImmediately);
+            RequestDisconnect(ClientServerBootstrap.ServerWorld, flushImmediately);
         }
 
         /// <summary>
@@ -238,7 +268,7 @@ namespace FourCorners.Scripts.Services
         /// disposed it, commented as "flush pending connections before tear-down" — that does
         /// nothing at all, and the real work was then done by a second identical query.
         /// </summary>
-        private static void RequestDisconnect(World world)
+        private static void RequestDisconnect(World world, bool flushImmediately)
         {
             if (world is not { IsCreated: true }) return;
 
@@ -253,6 +283,21 @@ namespace FourCorners.Scripts.Services
 
             ecb.Playback(world.EntityManager);
             ecb.Dispose();
+
+            if (!flushImmediately) return;
+
+            // NetworkStreamRequestDisconnect is only consumed by NetworkStreamReceiveSystem, so
+            // without an update the component is added and the process dies before anything is
+            // ever sent. One tick is enough to reach driverStore.Disconnect and flush the queue.
+            try
+            {
+                world.Update();
+            }
+            catch (Exception e)
+            {
+                // Tear-down is already in progress; a failed final tick must not mask the quit.
+                Debug.LogWarning($"[MultiplayerService] Final update on '{world.Name}' failed: {e.Message}");
+            }
         }
     }
 }

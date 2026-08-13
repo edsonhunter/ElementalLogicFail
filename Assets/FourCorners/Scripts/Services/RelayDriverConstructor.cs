@@ -19,7 +19,7 @@ namespace FourCorners.Scripts.Services
 
         public void CreateClientDriver(World world, ref NetworkDriverStore driverStore, NetDebug netDebug)
         {
-            var settings = DefaultDriverBuilder.GetNetworkClientSettings();
+            var settings = NetworkSettingsFactory.ClientSettings();
             if (!_isServer || ClientServerBootstrap.RequestedPlayType == ClientServerBootstrap.PlayType.Client)
             {
                 settings.WithRelayParameters(ref _relayClientData);
@@ -34,11 +34,11 @@ namespace FourCorners.Scripts.Services
         public void CreateServerDriver(World world, ref NetworkDriverStore driverStore, NetDebug netDebug)
         {
             // IPC for local clients
-            var ipcSettings = DefaultDriverBuilder.GetNetworkServerSettings();
+            var ipcSettings = NetworkSettingsFactory.ServerSettings();
             DefaultDriverBuilder.RegisterServerIpcDriver(world, ref driverStore, netDebug, ipcSettings);
-            
+
             // UDP + Relay for remote clients
-            var relaySettings = DefaultDriverBuilder.GetNetworkServerSettings();
+            var relaySettings = NetworkSettingsFactory.ServerSettings();
             relaySettings.WithRelayParameters(ref _relayServerData);
             DefaultDriverBuilder.RegisterServerUdpDriver(world, ref driverStore, netDebug, relaySettings);
         }

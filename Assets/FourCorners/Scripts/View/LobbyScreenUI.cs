@@ -53,6 +53,23 @@ namespace FourCorners.Scripts.View
         {
             UpdatePlayerCount(playerCount);
             startButton.gameObject.SetActive(isHost && playerCount >= MinPlayersToStart);
+
+            // OnStartClicked disables the button to swallow double-clicks and nothing else ever
+            // re-enables it. Without this, a player promoted to host after a failed start press
+            // is left with a permanently dead button.
+            startButton.interactable = true;
+        }
+
+        /// <summary>
+        /// The player joined a match that is already running, so this scene is a single-frame
+        /// stop on the way to Gameplay. Reuses the count label for the same reason
+        /// <see cref="ShowJoinRejected"/> does — no extra serialized field to wire in the scene.
+        /// </summary>
+        public void ShowJoiningMatch()
+        {
+            startButton.gameObject.SetActive(false);
+            if (playerCountLabel != null)
+                playerCountLabel.text = "Joining match in progress...";
         }
 
         /// <summary>

@@ -14,7 +14,14 @@ namespace FourCorners.Scripts.Services.Interface
         Task<string> HostRelayGameAsync(int maxPlayers);
         Task<bool> JoinRelayGameAsync(string joinCode);
 
-        /// <summary>Disconnects from the current session and cleans up Netcode worlds.</summary>
+        /// <summary>Closes every stream connection in the client and server worlds.</summary>
         void Disconnect();
+
+        /// <summary>
+        /// As <see cref="Disconnect()"/>, but optionally pumps each world once so the disconnect
+        /// packet leaves before the process stops ticking. Only needed on application shutdown —
+        /// otherwise the server has to wait out the connection timeout to notice the departure.
+        /// </summary>
+        void Disconnect(bool flushImmediately);
     }
 }
