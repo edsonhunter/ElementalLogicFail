@@ -1,3 +1,4 @@
+using FourCorners.Scripts.Components.Combat;
 using FourCorners.Scripts.Components.Minion;
 using Unity.Burst;
 using Unity.Collections;
@@ -7,6 +8,20 @@ using Unity.Physics.Systems;
 
 namespace FourCorners.Scripts.Systems.Collision
 {
+    /// <summary>
+    /// Starts a fight when two enemy minions touch.
+    ///
+    /// This used to destroy both of them outright, which is why "whoever survives continues the
+    /// walk" never happened — nobody ever survived. Contact now only *acquires* a target;
+    /// AttackSystem resolves the fight and EngagementSystem ends it.
+    ///
+    /// It lives in PhysicsSystemGroup because collision events are only valid there. Everything
+    /// else about combat is ordinary simulation and lives in Systems/Combat.
+    ///
+    /// Acquisition by contact rather than by range search is deliberate: the design is a duel
+    /// between minions that have walked into each other, so the broadphase has already done the
+    /// work. Towers and area spells will need a real spatial query; minions do not.
+    /// </summary>
     [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     [UpdateInGroup(typeof(PhysicsSystemGroup))]
@@ -16,6 +31,7 @@ namespace FourCorners.Scripts.Systems.Collision
         private const int ExpectedCollisionsPerFrame = 128;
 
         private ComponentLookup<MinionData> _minionLookup;
+        private ComponentLookup<Engagement> _engagementLookup;
         private NativeHashSet<Entity> _processedEntities;
 
         [BurstCompile]
@@ -25,6 +41,7 @@ namespace FourCorners.Scripts.Systems.Collision
             state.RequireForUpdate<SimulationSingleton>();
 
             _minionLookup = state.GetComponentLookup<MinionData>(true);
+            _engagementLookup = state.GetComponentLookup<Engagement>(true);
             _processedEntities = new NativeHashSet<Entity>(ExpectedCollisionsPerFrame, Allocator.Persistent);
         }
 
@@ -32,6 +49,7 @@ namespace FourCorners.Scripts.Systems.Collision
         public void OnUpdate(ref SystemState state)
         {
             _minionLookup.Update(ref state);
+            _engagementLookup.Update(ref state);
 
             // Last frame's job owns _processedEntities until it finishes. Clearing it from the
             // main thread without completing first is a race — and a hard throw with the Jobs
@@ -45,6 +63,7 @@ namespace FourCorners.Scripts.Systems.Collision
             var job = new CollisionEventJob
             {
                 MinionLookup = _minionLookup,
+                EngagementLookup = _engagementLookup,
                 EntityCommandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
                 ProcessedEntities = _processedEntities
             };
@@ -59,11 +78,13 @@ namespace FourCorners.Scripts.Systems.Collision
                 _processedEntities.Dispose();
         }
     }
-    
+
     [BurstCompile]
     public struct CollisionEventJob : ICollisionEventsJob
     {
         [ReadOnly] public ComponentLookup<MinionData> MinionLookup;
+        [ReadOnly] public ComponentLookup<Engagement> EngagementLookup;
+
         public NativeHashSet<Entity> ProcessedEntities;
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
 
@@ -76,38 +97,29 @@ namespace FourCorners.Scripts.Systems.Collision
             {
                 return;
             }
-            
-            var dataA = MinionLookup[a];
-            var dataB = MinionLookup[b];
 
-            if (dataA.TeamNumber == dataB.TeamNumber)
+            if (MinionLookup[a].TeamNumber == MinionLookup[b].TeamNumber)
             {
                 return;
             }
 
-            bool canDisableA = !ProcessedEntities.Contains(a);
-            bool canDisableB = !ProcessedEntities.Contains(b);
-
-            if (!canDisableA && !canDisableB)
-            {
-                return;
-            }
-
-            if (canDisableA)
-            {
-                AppendEntityRequest(a, collisionEvent.BodyIndexA);
-            }
-
-            if (canDisableB)
-            {
-                AppendEntityRequest(b, collisionEvent.BodyIndexB);
-            }
+            // Each side is decided independently, so a minion already fighting someone else keeps
+            // its current target instead of being yanked onto whoever brushed past it last.
+            TryEngage(a, b, collisionEvent.BodyIndexA);
+            TryEngage(b, a, collisionEvent.BodyIndexB);
         }
 
-        private void AppendEntityRequest(Entity entity, int sortKey)
+        private void TryEngage(Entity attacker, Entity target, int sortKey)
         {
-            ProcessedEntities.Add(entity);
-            EntityCommandBuffer.DestroyEntity(sortKey, entity);
+            // Already fighting — leave it alone.
+            if (EngagementLookup.HasComponent(attacker)) return;
+
+            // ProcessedEntities covers the same frame, which the lookup above cannot: the ECB
+            // has not played back yet, so a minion hit by two enemies this frame would otherwise
+            // be assigned both and keep whichever command happened to sort last.
+            if (!ProcessedEntities.Add(attacker)) return;
+
+            EntityCommandBuffer.AddComponent(sortKey, attacker, new Engagement { Target = target });
         }
     }
 }

@@ -1,4 +1,4 @@
-using FourCorners.Scripts.Components.Minion;
+using FourCorners.Scripts.Components.Combat;
 using FourCorners.Scripts.Systems.Collision;
 using FourCorners.Scripts.Tests.Editor;
 using NUnit.Framework;
@@ -11,35 +11,37 @@ namespace FourCorners.Scripts.Tests.Systems
     {
         private const float Step = 0.1f;
 
+        private void Tick()
+        {
+            AdvanceTime(Step);
+            World.GetOrCreateSystem<CooldownSystem>().Update(World.Unmanaged);
+            EntityManager.CompleteAllTrackedJobs();
+        }
+
         [Test]
         public void CooldownSystem_ReducesCooldownOverTime()
         {
-            var entity = EntityManager.CreateEntity(typeof(MinionData));
+            var entity = EntityManager.CreateEntity(typeof(AttackCooldown));
             const float initialCooldown = 5.0f;
-            EntityManager.SetComponentData(entity, new MinionData { Cooldown = initialCooldown });
+            EntityManager.SetComponentData(entity, new AttackCooldown { Remaining = initialCooldown });
 
-            AdvanceTime(Step);
-            World.GetOrCreateSystem<CooldownSystem>().Update(World.Unmanaged);
+            Tick();
 
-            var newCooldown = EntityManager.GetComponentData<MinionData>(entity).Cooldown;
-            Assert.Less(newCooldown, initialCooldown);
+            var remaining = EntityManager.GetComponentData<AttackCooldown>(entity).Remaining;
+            Assert.Less(remaining, initialCooldown);
         }
 
         [Test]
         public void CooldownSystem_DoesNotGoBelowZero()
         {
-            var entity = EntityManager.CreateEntity(typeof(MinionData));
-            EntityManager.SetComponentData(entity, new MinionData { Cooldown = Step });
+            var entity = EntityManager.CreateEntity(typeof(AttackCooldown));
+            EntityManager.SetComponentData(entity, new AttackCooldown { Remaining = Step });
 
-            var system = World.GetOrCreateSystem<CooldownSystem>();
+            Tick();
+            Tick();
 
-            AdvanceTime(Step);
-            system.Update(World.Unmanaged);
-            AdvanceTime(Step);
-            system.Update(World.Unmanaged);
-
-            var newCooldown = EntityManager.GetComponentData<MinionData>(entity).Cooldown;
-            Assert.AreEqual(0f, newCooldown);
+            var remaining = EntityManager.GetComponentData<AttackCooldown>(entity).Remaining;
+            Assert.AreEqual(0f, remaining);
         }
     }
 }

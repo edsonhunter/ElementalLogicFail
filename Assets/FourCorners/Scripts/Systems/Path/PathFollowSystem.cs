@@ -1,3 +1,4 @@
+using FourCorners.Scripts.Components.Combat;
 using FourCorners.Scripts.Components.Minion;
 using FourCorners.Scripts.Components.Path;
 using Unity.Burst;
@@ -7,6 +8,14 @@ using Unity.Transforms;
 
 namespace FourCorners.Scripts.Systems.Path
 {
+    /// <summary>
+    /// Walks minions along their lane — unless they are fighting.
+    ///
+    /// "Minions meet, fight, and the survivor walks on" is not a state machine here: it is the
+    /// absence of <see cref="Engagement"/>. A minion in a fight simply stops matching this query,
+    /// and starts matching it again the moment EngagementSystem releases it, resuming from the
+    /// waypoint index it had already reached.
+    /// </summary>
     [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PathFollowSystem : ISystem
@@ -28,6 +37,7 @@ namespace FourCorners.Scripts.Systems.Path
     }
 
     [BurstCompile]
+    [WithNone(typeof(Engagement))]
     public partial struct PathFollowJob : IJobEntity
     {
         public float DeltaTime;

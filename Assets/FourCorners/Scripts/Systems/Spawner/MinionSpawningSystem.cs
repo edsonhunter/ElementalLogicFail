@@ -164,8 +164,9 @@ namespace FourCorners.Scripts.Systems.Spawner
 
                             // Start from the prefab's baked stats and override only what is
                             // genuinely per-instance. Rebuilding MinionData from scratch here
-                            // hardcoded Speed and Cooldown to 2f, which made the corresponding
-                            // MinionAuthoring inspector fields have no runtime effect at all.
+                            // hardcoded Speed, which made the corresponding MinionAuthoring
+                            // inspector field have no runtime effect at all. Combat components
+                            // need no such care — Instantiate carries them over untouched.
                             MinionLookup.TryGetComponent(prefabComponent.Prefab, out var minion);
                             minion.TeamNumber = teamNumber;
                             minion.RandomSeed = random.NextUInt();

@@ -1,3 +1,4 @@
+using FourCorners.Scripts.Components.Combat;
 using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Minion;
 using FourCorners.Scripts.Components.Request;
@@ -21,16 +22,57 @@ namespace FourCorners.Scripts.Tests
         /// <summary>Deterministic seed — test fixtures must not depend on UnityEngine.Random.</summary>
         private const uint TestSeed = 12345;
 
-        public static MinionData CreateMinionData(TeamNumber type, float speed, float cooldown)
+        public static MinionData CreateMinionData(TeamNumber type, float speed)
         {
             return new MinionData
             {
                 TeamNumber = type,
                 Speed = speed,
-                Cooldown = cooldown,
                 Target = float3.zero,
                 RandomSeed = TestSeed
             };
+        }
+
+        /// <summary>
+        /// Creates something that can fight: a transform to measure range against, health to lose,
+        /// and an attack that is ready to swing immediately.
+        ///
+        /// <paramref name="cooldown"/> defaults to 0 so a test can assert on the first hit without
+        /// first having to tick a wind-up it does not care about.
+        /// </summary>
+        public static Entity CreateCombatant(
+            EntityManager entityManager,
+            float3 position,
+            int health,
+            int damage = 1,
+            float interval = 1f,
+            float range = 2f,
+            float cooldown = 0f)
+        {
+            var entity = entityManager.CreateEntity(
+                typeof(LocalTransform),
+                typeof(Health),
+                typeof(AttackStats),
+                typeof(AttackCooldown),
+                typeof(DestroyOnDeath));
+
+            entityManager.SetComponentData(entity, LocalTransform.FromPosition(position));
+            entityManager.SetComponentData(entity, new Health { Current = health, Max = health });
+            entityManager.SetComponentData(entity, new AttackStats
+            {
+                Damage = damage,
+                Interval = interval,
+                Range = range
+            });
+            entityManager.SetComponentData(entity, new AttackCooldown { Remaining = cooldown });
+
+            return entity;
+        }
+
+        /// <summary>Locks <paramref name="attacker"/> onto <paramref name="target"/>.</summary>
+        public static void Engage(EntityManager entityManager, Entity attacker, Entity target)
+        {
+            entityManager.AddComponentData(attacker, new Engagement { Target = target });
         }
 
         /// <summary>

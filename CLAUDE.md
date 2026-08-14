@@ -93,9 +93,20 @@ listed in `Packages/manifest.json`. Read `Packages/packages-lock.json` for real 
    the subscene. A scene reference bakes a live entity, so every race renders on every corner.
 4. **Team count is `TeamNumber`'s member count.** Never write a literal `4`. Note `TeamColor` in
    the same file has six members — the two enums are *not* interchangeable.
-5. **Minions are stateless between frames apart from `PathFollower`/`MinionData`.** Anything the
-   client needs must be a `[GhostField]`; anything the server-only simulation needs must be
-   gated to `ServerSimulation` or it will diverge on clients.
+5. **A minion's only cross-frame state is `PathFollower`, `MinionData`, `Health`, `AttackCooldown`
+   and `Engagement`.** Anything the client needs must be a `[GhostField]`; anything the server-only
+   simulation needs must be gated to `ServerSimulation` or it will diverge on clients.
+7. **Fighting is the presence of `Engagement`, not a state machine.** `PathFollowSystem` excludes
+   it, so a minion stops walking the instant it is engaged and resumes from the same waypoint
+   index when released — there is no "combat mode" to enter or leave. `CollisionSystem` is the
+   only producer (physics contact), `EngagementSystem` the only releaser.
+8. **`Engagement.Target` is always stale.** It is added and removed through the end-of-frame ECB,
+   so every reader must re-check that the target still exists, still has `Health`, and is still
+   in range. Do not try to fix this with `[UpdateBefore]`/`[UpdateAfter]` — the removal lands
+   after every system in the frame regardless of ordering.
+9. **`Health` alone does not kill.** Only entities tagged `DestroyOnDeath` are destroyed by
+   `DeathSystem`. A corner base takes damage but must survive its own destruction as a
+   deactivated ghost, so it deliberately carries `Health` without the tag.
 
 ---
 

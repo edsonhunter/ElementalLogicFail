@@ -32,7 +32,7 @@ namespace FourCorners.Scripts.Tests.Systems
             var targetPosition = new float3(5, 0, 5);
             
             EntityManager.SetComponentData(entity, new LocalTransform { Position = initialPosition, Scale = 1 });
-            var minionData = EntityTest.CreateMinionData(TeamNumber.Team2, 5f,  0);
+            var minionData = EntityTest.CreateMinionData(TeamNumber.Team2, 5f);
             minionData.Target = targetPosition;
             EntityManager.SetComponentData(entity, minionData);
 
@@ -50,7 +50,7 @@ namespace FourCorners.Scripts.Tests.Systems
             var initialTarget = new float3(5, 0, 5);
             
             EntityManager.SetComponentData(entity, new LocalTransform { Position = initialTarget, Scale = 1 });
-            var minionData = EntityTest.CreateMinionData(TeamNumber.Team2, 5f,  0);
+            var minionData = EntityTest.CreateMinionData(TeamNumber.Team2, 5f);
             minionData.Target = initialTarget;
             EntityManager.SetComponentData(entity, minionData);
 

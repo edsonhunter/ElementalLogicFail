@@ -18,10 +18,8 @@ namespace FourCorners.Scripts.Components.Minion
         /// <summary>Per-instance seed for movement noise. Assigned at spawn, not at bake.</summary>
         [GhostField] public uint RandomSeed;
 
-        /// <summary>
-        /// Server-only. Deliberately NOT a [GhostField] — CooldownSystem is server-filtered so
-        /// clients must never simulate this value.
-        /// </summary>
-        public float Cooldown;
+        // The attack cooldown used to live here. It moved to Components.Combat.AttackCooldown so
+        // that bases and towers — which have a reload timer but are not minions — can share the
+        // one system that ticks it.
     }
 }
