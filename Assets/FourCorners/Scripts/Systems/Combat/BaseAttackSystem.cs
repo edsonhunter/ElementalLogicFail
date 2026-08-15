@@ -88,6 +88,7 @@ namespace FourCorners.Scripts.Systems.Combat
         public NativeQueue<DamageEvent>.ParallelWriter DamageWriter;
 
         private void Execute(
+            Entity entity,
             RefRO<MinionData> minion,
             RefRO<AttackStats> stats,
             RefRW<AttackCooldown> cooldown,
@@ -111,6 +112,7 @@ namespace FourCorners.Scripts.Systems.Combat
 
                 DamageWriter.Enqueue(new DamageEvent
                 {
+                    Attacker = entity,
                     Target = BaseEntities[i],
                     Amount = stats.ValueRO.Damage
                 });

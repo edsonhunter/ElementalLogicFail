@@ -9,10 +9,10 @@ using Unity.Transforms;
 namespace FourCorners.Scripts.Systems.Combat
 {
     /// <summary>
-    /// Maintains fights that CollisionSystem started: releases the ones that are over, and holds
+    /// Maintains fights that EngagementAcquisitionSystem started: releases the ones that are over, and holds
     /// the combatants still while they last.
     ///
-    /// Acquisition lives in CollisionSystem because it needs physics contact events and therefore
+    /// Acquisition lives in EngagementAcquisitionSystem because it needs physics contact events and therefore
     /// has to run inside PhysicsSystemGroup. Everything after that is ordinary simulation, so it
     /// lives here — one system to start a fight, one to end it.
     /// </summary>

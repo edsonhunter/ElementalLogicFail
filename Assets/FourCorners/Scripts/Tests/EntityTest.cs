@@ -69,6 +69,14 @@ namespace FourCorners.Scripts.Tests
             return entity;
         }
 
+        /// <summary>A bare minion — just enough to be found by team.</summary>
+        public static Entity CreateTestMinion(EntityManager entityManager, TeamNumber team)
+        {
+            var entity = entityManager.CreateEntity(typeof(MinionData));
+            entityManager.SetComponentData(entity, CreateMinionData(team, speed: 1f));
+            return entity;
+        }
+
         /// <summary>Locks <paramref name="attacker"/> onto <paramref name="target"/>.</summary>
         public static void Engage(EntityManager entityManager, Entity attacker, Entity target)
         {
@@ -95,6 +103,7 @@ namespace FourCorners.Scripts.Tests
             var entity = entityManager.CreateEntity(
                 typeof(MatchStateTag),
                 typeof(MatchState),
+                typeof(MatchClock),
                 typeof(TeamStatusElement),
                 typeof(ConnectedPlayerElement));
 

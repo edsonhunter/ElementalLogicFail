@@ -1,7 +1,7 @@
 using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Request;
 using FourCorners.Scripts.Components.Team;
-using FourCorners.Scripts.Systems.Connection;
+using FourCorners.Scripts.Systems.Match;
 using FourCorners.Scripts.Tests.Editor;
 using NUnit.Framework;
 using Unity.Entities;

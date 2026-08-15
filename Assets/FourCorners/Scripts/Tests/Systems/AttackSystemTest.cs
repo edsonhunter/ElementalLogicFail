@@ -102,6 +102,30 @@ namespace FourCorners.Scripts.Tests.Systems
             Assert.AreEqual(3, HealthOf(target));
         }
 
+        /// <summary>
+        /// Two evenly matched minions used to annihilate each other every single time: attacks are
+        /// all decided before any are applied, so both swung on the frame either of them died, and
+        /// "whoever survives continues the walk" never once happened.
+        /// </summary>
+        [Test]
+        public void AttackSystem_LeavesASurvivorWhenBothBlowsWouldBeLethal()
+        {
+            var first = EntityTest.CreateCombatant(EntityManager, float3.zero, health: 3, damage: 3);
+            var second = EntityTest.CreateCombatant(EntityManager, new float3(1f, 0f, 0f), health: 3, damage: 3);
+            EntityTest.Engage(EntityManager, first, second);
+            EntityTest.Engage(EntityManager, second, first);
+
+            Tick();
+
+            int firstHealth = HealthOf(first);
+            int secondHealth = HealthOf(second);
+
+            Assert.AreNotEqual(0, firstHealth + secondHealth,
+                "Both combatants died — the duel produced no survivor.");
+            Assert.IsTrue(firstHealth == 0 || secondHealth == 0,
+                "Exactly one of them should have fallen.");
+        }
+
         [Test]
         public void AttackSystem_ClampsOverkillAtZero()
         {

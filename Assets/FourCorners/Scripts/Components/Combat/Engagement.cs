@@ -9,7 +9,7 @@ namespace FourCorners.Scripts.Components.Combat
     /// which is what makes "minions meet, fight, survivor walks on" fall out of the existing lane
     /// loop without a state machine.
     ///
-    /// Acquired by CollisionSystem on contact and released by EngagementSystem when the target
+    /// Acquired by EngagementAcquisitionSystem on contact and released by EngagementSystem when the target
     /// dies or gets too far away. It is added and removed structurally through the
     /// EndSimulation ECB, so it is always one frame behind the event that caused it — every
     /// consumer must therefore re-validate <see cref="Target"/> rather than trust it.

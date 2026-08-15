@@ -3,7 +3,7 @@ using FourCorners.Scripts.Components.Team;
 using Unity.Collections;
 using Unity.Entities;
 
-namespace FourCorners.Scripts.Systems.Connection
+namespace FourCorners.Scripts.Systems.Match
 {
     /// <summary>
     /// Runs once during server startup to guarantee the MatchState entity exists
@@ -41,6 +41,9 @@ namespace FourCorners.Scripts.Systems.Connection
                 Phase = MatchPhase.WaitingForPlayers,
                 HostNetworkId = 0
             });
+
+            // Separate component, single writer — see MatchClock's own note.
+            state.EntityManager.AddComponentData(matchStateEntity, new MatchClock());
 
             // Player roster — grows as players are accepted by ServerAcceptGameSystem
             state.EntityManager.AddBuffer<ConnectedPlayerElement>(matchStateEntity);

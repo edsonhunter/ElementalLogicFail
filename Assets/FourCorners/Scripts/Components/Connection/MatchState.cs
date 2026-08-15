@@ -25,13 +25,7 @@ namespace FourCorners.Scripts.Components.Connection
         /// </summary>
         public int WinnerNetworkId;
 
-        /// <summary>Seconds since the match went Active. Drives sudden death.</summary>
-        public float ElapsedSeconds;
-
-        /// <summary>
-        /// True once the clock has passed the sudden-death threshold and bases have started
-        /// taking damage on their own. Latched so the escalation cannot be un-triggered.
-        /// </summary>
-        public bool SuddenDeathActive;
+        // Elapsed time and sudden death live in MatchClock, which has a single writer. See the
+        // note there for why a per-frame counter does not belong in this component.
     }
 }

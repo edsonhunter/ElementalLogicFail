@@ -5,7 +5,7 @@ using FourCorners.Scripts.Components.Team;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FourCorners.Scripts.Systems.Connection
+namespace FourCorners.Scripts.Systems.Match
 {
     /// <summary>
     /// Runs the match clock and forces an ending if nobody manages one.
@@ -18,6 +18,8 @@ namespace FourCorners.Scripts.Systems.Connection
     /// Escalating damage rather than an abrupt tie-break on the whistle: a match that ends because
     /// bases got fragile still ends on someone's play, whereas one that ends because a timer said
     /// so ends on nothing.
+    ///
+    /// Sole writer of <see cref="MatchClock"/>, and it reads MatchState without ever writing it.
     /// </summary>
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -38,14 +40,14 @@ namespace FourCorners.Scripts.Systems.Connection
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<MatchStateTag>();
+            state.RequireForUpdate<MatchClock>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var matchStateEntity = SystemAPI.GetSingletonEntity<MatchStateTag>();
-            var matchState = SystemAPI.GetComponent<MatchState>(matchStateEntity);
 
-            if (matchState.Phase != MatchPhase.Active)
+            if (SystemAPI.GetComponent<MatchState>(matchStateEntity).Phase != MatchPhase.Active)
             {
                 // Reset so a second match on the same server world does not inherit a clock that
                 // is already past the threshold.
@@ -54,24 +56,26 @@ namespace FourCorners.Scripts.Systems.Connection
                 return;
             }
 
-            float deltaTime = SystemAPI.Time.DeltaTime;
-            matchState.ElapsedSeconds += deltaTime;
+            var clock = SystemAPI.GetComponent<MatchClock>(matchStateEntity);
 
-            if (matchState.ElapsedSeconds < SuddenDeathAfterSeconds)
+            float deltaTime = SystemAPI.Time.DeltaTime;
+            clock.ElapsedSeconds += deltaTime;
+
+            if (clock.ElapsedSeconds < SuddenDeathAfterSeconds)
             {
-                SystemAPI.SetComponent(matchStateEntity, matchState);
+                SystemAPI.SetComponent(matchStateEntity, clock);
                 return;
             }
 
-            if (!matchState.SuddenDeathActive)
+            if (!clock.SuddenDeathActive)
             {
-                matchState.SuddenDeathActive = true;
+                clock.SuddenDeathActive = true;
                 UnityEngine.Debug.Log(
-                    $"[MatchClockSystem] Sudden death after {matchState.ElapsedSeconds:F0}s — " +
+                    $"[MatchClockSystem] Sudden death after {clock.ElapsedSeconds:F0}s — " +
                     "every remaining base now decays.");
             }
 
-            SystemAPI.SetComponent(matchStateEntity, matchState);
+            SystemAPI.SetComponent(matchStateEntity, clock);
 
             _tickTimer += deltaTime;
             if (_tickTimer < TickInterval) return;

@@ -68,6 +68,12 @@ namespace FourCorners.Scripts.Systems.Combat
     /// <summary>One landed attack, waiting to be applied.</summary>
     public struct DamageEvent
     {
+        /// <summary>
+        /// Who swung. Carried so the apply pass can drop the blow if this attacker was already
+        /// killed earlier in the same drain — see <see cref="ApplyDamageJob"/>.
+        /// </summary>
+        public Entity Attacker;
+
         public Entity Target;
         public int Amount;
     }
@@ -87,6 +93,7 @@ namespace FourCorners.Scripts.Systems.Combat
         public NativeQueue<DamageEvent>.ParallelWriter DamageWriter;
 
         private void Execute(
+            Entity entity,
             RefRO<Engagement> engagement,
             RefRO<AttackStats> stats,
             RefRW<AttackCooldown> cooldown,
@@ -107,6 +114,7 @@ namespace FourCorners.Scripts.Systems.Combat
 
             DamageWriter.Enqueue(new DamageEvent
             {
+                Attacker = entity,
                 Target = target,
                 Amount = stats.ValueRO.Damage
             });
@@ -118,6 +126,11 @@ namespace FourCorners.Scripts.Systems.Combat
     /// <summary>
     /// Applies every reported hit. Single-threaded on purpose — this is the one place Health is
     /// written, so concurrent attackers on the same target simply queue up behind each other.
+    ///
+    /// Being single-threaded is also what lets a fight have a winner. Attacks are all *decided*
+    /// before any are *applied*, so two evenly matched minions both swing on the frame either of
+    /// them dies. Resolving them one at a time, and dropping the blow of an attacker that is
+    /// already dead by the time its turn comes up, is what leaves someone standing to walk on.
     /// </summary>
     [BurstCompile]
     public struct ApplyDamageJob : IJob
@@ -130,6 +143,14 @@ namespace FourCorners.Scripts.Systems.Combat
             while (DamageEvents.TryDequeue(out var damage))
             {
                 if (!HealthLookup.HasComponent(damage.Target)) continue;
+
+                // Killed earlier in this same drain — the corpse does not get its last word.
+                // Attackers with no Health at all (a future tower, say) are always allowed.
+                if (HealthLookup.HasComponent(damage.Attacker) &&
+                    HealthLookup[damage.Attacker].Current <= 0)
+                {
+                    continue;
+                }
 
                 var health = HealthLookup[damage.Target];
 

@@ -98,6 +98,10 @@ namespace FourCorners.Scripts.Systems.Spawner
                             healthLookup[candidate] = baseHealth;
                         }
 
+                        // Marks the corner as live so CornerTeardownSystem can spot it going
+                        // inactive later, whether that is a disconnect or a demolished base.
+                        ecb.AddComponent<ActiveCorner>(candidate);
+
                         baseEntity = candidate;
                         assigned = true;
 

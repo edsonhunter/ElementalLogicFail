@@ -3,7 +3,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FourCorners.Scripts.Systems.Collision
+namespace FourCorners.Scripts.Systems.Combat
 {
     /// <summary>
     /// Ticks every <see cref="AttackCooldown"/> toward zero. AttackSystem consumes it.
@@ -21,7 +21,7 @@ namespace FourCorners.Scripts.Systems.Collision
     [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    public partial struct CooldownSystem : ISystem
+    public partial struct AttackCooldownSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)

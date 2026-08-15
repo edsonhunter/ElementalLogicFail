@@ -1,5 +1,4 @@
 using FourCorners.Scripts.Components.Connection;
-using FourCorners.Scripts.Components.Minion;
 using FourCorners.Scripts.Components.Spawner;
 using FourCorners.Scripts.Components.Team;
 using Unity.Collections;
@@ -25,7 +24,7 @@ namespace FourCorners.Scripts.Systems.Connection
     {
         private EntityQuery _disconnectedQuery;
         private EntityQuery _baseQuery;
-        private EntityQuery _spawnerQuery;
+
 
         public void OnCreate(ref SystemState state)
         {
@@ -40,7 +39,7 @@ namespace FourCorners.Scripts.Systems.Connection
             state.RequireForUpdate(_disconnectedQuery);
 
             _baseQuery = state.GetEntityQuery(ComponentType.ReadWrite<PlayerBase>());
-            _spawnerQuery = state.GetEntityQuery(ComponentType.ReadWrite<SpawnerData>());
+
         }
 
         public void OnUpdate(ref SystemState state)
@@ -63,7 +62,7 @@ namespace FourCorners.Scripts.Systems.Connection
 
                 int networkId = connectionState.ValueRO.NetworkId;
 
-                ReleaseTeamSlot(ref state, teamBuffer, connectionEntity, ecb);
+                ReleaseTeamSlot(ref state, teamBuffer, connectionEntity);
                 RemoveFromRoster(playerBuffer, connectionEntity);
 
                 // ConnectionState is ICleanupComponentData: the entity outlives the connection
@@ -110,9 +109,15 @@ namespace FourCorners.Scripts.Systems.Connection
         }
 
         /// <summary>
-        /// Frees the team slot and deactivates the corner it owned: base, spawners, and any
-        /// minions already on the field. BaseAllocationSystem's "not already active" guard then
-        /// lets the corner be granted again, including to the same player rejoining.
+        /// Frees the team slot and deactivates the corner it owned.
+        ///
+        /// Deactivating is the whole job here. Silencing the spawners and clearing the field is
+        /// CornerTeardownSystem's, which reacts to any corner going inactive — so a corner
+        /// abandoned by a disconnect and one flattened in combat are cleaned up by the same code
+        /// rather than by two copies that drift apart.
+        ///
+        /// BaseAllocationSystem's "not already active" guard then lets the corner be granted
+        /// again, including to the same player rejoining.
         /// </summary>
         /// <remarks>
         /// Takes `ref SystemState` because it uses SystemAPI: the source generator needs it to
@@ -121,8 +126,7 @@ namespace FourCorners.Scripts.Systems.Connection
         private void ReleaseTeamSlot(
             ref SystemState state,
             DynamicBuffer<TeamStatusElement> teamBuffer,
-            Entity connectionEntity,
-            EntityCommandBuffer ecb)
+            Entity connectionEntity)
         {
             int releasedTeam = -1;
 
@@ -141,12 +145,9 @@ namespace FourCorners.Scripts.Systems.Connection
             state.CompleteDependency();
             var team = (TeamNumber)releasedTeam;
             var baseLookup = SystemAPI.GetComponentLookup<PlayerBase>(isReadOnly: false);
-            var spawnerLookup = SystemAPI.GetComponentLookup<SpawnerData>(isReadOnly: false);
 
             using var bases = _baseQuery.ToEntityArray(Allocator.Temp);
-            using var spawners = _spawnerQuery.ToEntityArray(Allocator.Temp);
 
-            var releasedBase = Entity.Null;
             foreach (var candidate in bases)
             {
                 if (!baseLookup.TryGetComponent(candidate, out var baseData)) continue;
@@ -155,27 +156,7 @@ namespace FourCorners.Scripts.Systems.Connection
                 baseData.IsActive = false;
                 baseData.NetworkId = 0;
                 baseLookup[candidate] = baseData;
-                releasedBase = candidate;
                 break;
-            }
-
-            foreach (var spawnerEntity in spawners)
-            {
-                if (!spawnerLookup.TryGetComponent(spawnerEntity, out var spawnerData)) continue;
-                if (spawnerData.PlayerBaseEntity != releasedBase) continue;
-
-                spawnerData.IsActive = false;
-                spawnerData.NetworkId = 0;
-                spawnerData.Timer = 0f;
-                spawnerLookup[spawnerEntity] = spawnerData;
-            }
-
-            // Clear the field of their minions so an abandoned corner stops fighting.
-            foreach (var (minion, minionEntity) in
-                     SystemAPI.Query<RefRO<MinionData>>().WithEntityAccess())
-            {
-                if (minion.ValueRO.TeamNumber == team)
-                    ecb.DestroyEntity(minionEntity);
             }
         }
 

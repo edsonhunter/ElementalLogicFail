@@ -1,5 +1,5 @@
 using FourCorners.Scripts.Components.Combat;
-using FourCorners.Scripts.Systems.Collision;
+using FourCorners.Scripts.Systems.Combat;
 using FourCorners.Scripts.Tests.Editor;
 using NUnit.Framework;
 using Unity.Entities;
@@ -14,7 +14,7 @@ namespace FourCorners.Scripts.Tests.Systems
         private void Tick()
         {
             AdvanceTime(Step);
-            World.GetOrCreateSystem<CooldownSystem>().Update(World.Unmanaged);
+            World.GetOrCreateSystem<AttackCooldownSystem>().Update(World.Unmanaged);
             EntityManager.CompleteAllTrackedJobs();
         }
 

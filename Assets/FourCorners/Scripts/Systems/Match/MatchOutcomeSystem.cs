@@ -4,7 +4,7 @@ using FourCorners.Scripts.Components.Team;
 using Unity.Entities;
 using Unity.NetCode;
 
-namespace FourCorners.Scripts.Systems.Connection
+namespace FourCorners.Scripts.Systems.Match
 {
     /// <summary>
     /// Decides when the match is over and tells everyone.

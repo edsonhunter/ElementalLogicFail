@@ -6,7 +6,7 @@ using Unity.Entities;
 using Unity.Physics;
 using Unity.Physics.Systems;
 
-namespace FourCorners.Scripts.Systems.Collision
+namespace FourCorners.Scripts.Systems.Combat
 {
     /// <summary>
     /// Starts a fight when two enemy minions touch.
@@ -26,12 +26,13 @@ namespace FourCorners.Scripts.Systems.Collision
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     [UpdateInGroup(typeof(PhysicsSystemGroup))]
     [UpdateAfter(typeof(PhysicsSimulationGroup))]
-    public partial struct CollisionSystem : ISystem
+    public partial struct EngagementAcquisitionSystem : ISystem
     {
         private const int ExpectedCollisionsPerFrame = 128;
 
         private ComponentLookup<MinionData> _minionLookup;
         private ComponentLookup<Engagement> _engagementLookup;
+        private ComponentLookup<Health> _healthLookup;
         private NativeHashSet<Entity> _processedEntities;
 
         [BurstCompile]
@@ -42,6 +43,7 @@ namespace FourCorners.Scripts.Systems.Collision
 
             _minionLookup = state.GetComponentLookup<MinionData>(true);
             _engagementLookup = state.GetComponentLookup<Engagement>(true);
+            _healthLookup = state.GetComponentLookup<Health>(true);
             _processedEntities = new NativeHashSet<Entity>(ExpectedCollisionsPerFrame, Allocator.Persistent);
         }
 
@@ -50,6 +52,7 @@ namespace FourCorners.Scripts.Systems.Collision
         {
             _minionLookup.Update(ref state);
             _engagementLookup.Update(ref state);
+            _healthLookup.Update(ref state);
 
             // Last frame's job owns _processedEntities until it finishes. Clearing it from the
             // main thread without completing first is a race — and a hard throw with the Jobs
@@ -60,10 +63,11 @@ namespace FourCorners.Scripts.Systems.Collision
             var simulation = SystemAPI.GetSingleton<SimulationSingleton>();
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
 
-            var job = new CollisionEventJob
+            var job = new EngagementAcquisitionJob
             {
                 MinionLookup = _minionLookup,
                 EngagementLookup = _engagementLookup,
+                HealthLookup = _healthLookup,
                 EntityCommandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
                 ProcessedEntities = _processedEntities
             };
@@ -80,10 +84,11 @@ namespace FourCorners.Scripts.Systems.Collision
     }
 
     [BurstCompile]
-    public struct CollisionEventJob : ICollisionEventsJob
+    public struct EngagementAcquisitionJob : ICollisionEventsJob
     {
         [ReadOnly] public ComponentLookup<MinionData> MinionLookup;
         [ReadOnly] public ComponentLookup<Engagement> EngagementLookup;
+        [ReadOnly] public ComponentLookup<Health> HealthLookup;
 
         public NativeHashSet<Entity> ProcessedEntities;
         public EntityCommandBuffer.ParallelWriter EntityCommandBuffer;
@@ -100,6 +105,13 @@ namespace FourCorners.Scripts.Systems.Collision
 
             if (MinionLookup[a].TeamNumber == MinionLookup[b].TeamNumber)
             {
+                // Allies. Bumping into a friend who is mid-fight means joining it.
+                //
+                // Same-team contacts used to be discarded outright, which is why reinforcements
+                // walked straight past a brawl: engaged minions are pinned in place, so an
+                // arriving ally collides with *them* and never reaches the enemy behind them.
+                TryAssist(a, b, collisionEvent.BodyIndexA);
+                TryAssist(b, a, collisionEvent.BodyIndexB);
                 return;
             }
 
@@ -107,6 +119,24 @@ namespace FourCorners.Scripts.Systems.Collision
             // its current target instead of being yanked onto whoever brushed past it last.
             TryEngage(a, b, collisionEvent.BodyIndexA);
             TryEngage(b, a, collisionEvent.BodyIndexB);
+        }
+
+        /// <summary>
+        /// Puts <paramref name="helper"/> onto whatever <paramref name="ally"/> is fighting.
+        /// </summary>
+        private void TryAssist(Entity helper, Entity ally, int sortKey)
+        {
+            if (!EngagementLookup.TryGetComponent(ally, out var allyEngagement)) return;
+
+            var target = allyEngagement.Target;
+
+            // The ally's target is read through an end-of-frame ECB like every other engagement,
+            // so it may already be dead. Piling onto a corpse would pin the helper in place until
+            // EngagementSystem noticed and released it a frame later.
+            if (!HealthLookup.TryGetComponent(target, out var targetHealth)) return;
+            if (targetHealth.Current <= 0) return;
+
+            TryEngage(helper, target, sortKey);
         }
 
         private void TryEngage(Entity attacker, Entity target, int sortKey)

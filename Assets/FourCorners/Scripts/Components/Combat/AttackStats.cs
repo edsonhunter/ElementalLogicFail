@@ -24,7 +24,7 @@ namespace FourCorners.Scripts.Components.Combat
     }
 
     /// <summary>
-    /// Time left before this entity may attack again. Ticked by CooldownSystem, consumed by
+    /// Time left before this entity may attack again. Ticked by AttackCooldownSystem, consumed by
     /// AttackSystem.
     ///
     /// Separate from <see cref="AttackStats"/> because it changes every frame while the stats do
