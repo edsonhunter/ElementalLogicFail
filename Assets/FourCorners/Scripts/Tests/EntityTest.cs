@@ -86,6 +86,29 @@ namespace FourCorners.Scripts.Tests
             return entity;
         }
 
+        /// <summary>
+        /// Creates the match-state entity with an empty team slot per corner and an empty roster —
+        /// the shape MatchStateBootstrapSystem produces on the server.
+        /// </summary>
+        public static Entity CreateMatchStateWithSlots(EntityManager entityManager, MatchPhase phase)
+        {
+            var entity = entityManager.CreateEntity(
+                typeof(MatchStateTag),
+                typeof(MatchState),
+                typeof(TeamStatusElement),
+                typeof(ConnectedPlayerElement));
+
+            entityManager.SetComponentData(entity, new MatchState { Phase = phase });
+
+            var slots = entityManager.GetBuffer<TeamStatusElement>(entity);
+            for (int i = 0; i < Teams.Count; i++)
+            {
+                slots.Add(new TeamStatusElement { IsOccupied = false, OccupyingPlayer = Entity.Null });
+            }
+
+            return entity;
+        }
+
         /// <summary>Creates an activated corner base — the authority SpawnerSystem checks.</summary>
         public static Entity CreateTestPlayerBase(EntityManager entityManager, TeamNumber team, bool isActive = true)
         {

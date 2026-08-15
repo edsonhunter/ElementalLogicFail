@@ -18,5 +18,20 @@ namespace FourCorners.Scripts.Components.Connection
         /// handling compacts the buffer it silently promotes an arbitrary player.
         /// </summary>
         public int HostNetworkId;
+
+        /// <summary>
+        /// Winner's NetworkId once <see cref="Phase"/> is <see cref="MatchPhase.Ended"/>, or 0 if
+        /// the match ended with nobody left — a mutual kill, or everyone having walked out.
+        /// </summary>
+        public int WinnerNetworkId;
+
+        /// <summary>Seconds since the match went Active. Drives sudden death.</summary>
+        public float ElapsedSeconds;
+
+        /// <summary>
+        /// True once the clock has passed the sudden-death threshold and bases have started
+        /// taking damage on their own. Latched so the escalation cannot be un-triggered.
+        /// </summary>
+        public bool SuddenDeathActive;
     }
 }

@@ -33,6 +33,7 @@ namespace FourCorners.Scripts.Systems.Connection
     public partial struct ClientDisconnectSystem : ISystem
     {
         private EntityQuery _matchStartedQuery;
+        private EntityQuery _matchEndedQuery;
         private EntityQuery _sceneReadyQuery;
         private EntityQuery _sceneLoadedQuery;
         private EntityQuery _joinRejectedQuery;
@@ -48,6 +49,7 @@ namespace FourCorners.Scripts.Systems.Connection
             // more than one, which turns a recoverable mess into an exception every frame — and
             // the very thing that would clean the mess up is the thing that dies.
             _matchStartedQuery = state.GetEntityQuery(ComponentType.ReadOnly<MatchStartedTag>());
+            _matchEndedQuery = state.GetEntityQuery(ComponentType.ReadOnly<MatchEndedTag>());
             _sceneReadyQuery = state.GetEntityQuery(ComponentType.ReadOnly<ClientSceneReady>());
             _sceneLoadedQuery = state.GetEntityQuery(ComponentType.ReadOnly<SceneLoadedTag>());
             _joinRejectedQuery = state.GetEntityQuery(ComponentType.ReadOnly<JoinRejectedTag>());
@@ -75,6 +77,7 @@ namespace FourCorners.Scripts.Systems.Connection
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
             ecb.DestroyEntity(_matchStartedQuery, EntityQueryCaptureMode.AtPlayback);
+            ecb.DestroyEntity(_matchEndedQuery, EntityQueryCaptureMode.AtPlayback);
             ecb.DestroyEntity(_sceneReadyQuery, EntityQueryCaptureMode.AtPlayback);
             ecb.DestroyEntity(_sceneLoadedQuery, EntityQueryCaptureMode.AtPlayback);
             ecb.DestroyEntity(_joinRejectedQuery, EntityQueryCaptureMode.AtPlayback);

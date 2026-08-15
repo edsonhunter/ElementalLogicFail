@@ -32,7 +32,10 @@ namespace FourCorners.Scripts.Systems.Connection
         private bool _matchStartedPresent;
         private bool _joinRejectedPresent;
 
+        private bool _matchEndedPresent;
+
         private EntityQuery _matchStartedQuery;
+        private EntityQuery _matchEndedQuery;
         private EntityQuery _joinRejectedQuery;
         private EntityQuery _disconnectedQuery;
 
@@ -42,6 +45,7 @@ namespace FourCorners.Scripts.Systems.Connection
             // duplicate, and this system is the only route from simulation to the UI — if it
             // dies, the player is stranded on whatever screen they happen to be looking at.
             _matchStartedQuery = GetEntityQuery(ComponentType.ReadOnly<MatchStartedTag>());
+            _matchEndedQuery = GetEntityQuery(ComponentType.ReadOnly<MatchEndedTag>());
             _joinRejectedQuery = GetEntityQuery(ComponentType.ReadOnly<JoinRejectedTag>());
             _disconnectedQuery = GetEntityQuery(ComponentType.ReadOnly<ClientDisconnectedTag>());
         }
@@ -77,6 +81,16 @@ namespace FourCorners.Scripts.Systems.Connection
             if (matchStarted && !_matchStartedPresent)
                 _service.OnMatchStarted?.Invoke();
             _matchStartedPresent = matchStarted;
+
+            bool matchEnded = !_matchEndedQuery.IsEmpty;
+            if (matchEnded && !_matchEndedPresent)
+            {
+                // Read rather than assumed: the tag carries the outcome, and only this world
+                // knows whether the winning NetworkId is its own.
+                var outcome = SystemAPI.GetSingleton<MatchEndedTag>();
+                _service.OnMatchEnded?.Invoke(outcome.LocalPlayerWon);
+            }
+            _matchEndedPresent = matchEnded;
 
             bool joinRejected = !_joinRejectedQuery.IsEmpty;
             if (joinRejected && !_joinRejectedPresent)

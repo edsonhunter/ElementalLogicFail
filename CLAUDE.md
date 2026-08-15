@@ -148,6 +148,24 @@ SpawnerSystem              server            ticks waves → MinionSpawnRequest
 MinionSpawningSystem       server            instantiates minions with lane + team
 ```
 
+And the way out (server-authoritative in the same way):
+
+```
+BaseAttackSystem           server            unengaged minions damage an enemy base in range
+BaseDestructionSystem      server            Health 0 → PlayerBase.IsActive=false,
+                                             TeamStatusElement.IsEliminated, minions cleared
+MatchClockSystem           server            ticks ElapsedSeconds; past the threshold every
+                                             live base decays until someone dies
+MatchOutcomeSystem         server            ≤1 uneliminated slot → Ended + WinnerNetworkId
+                                             → MatchEndedRpc (to every roster entry)
+ClientMatchEndedSystem     client            → MatchEndedTag{Winner, LocalPlayerWon}
+BridgeNotificationSystem   client            → ISystemBridgeService.OnMatchEnded(won)
+```
+
+**Survivors are counted from `TeamStatusElement`, never from `PlayerBase.IsActive`.** Bases are
+activated several frames after the phase goes Active — the client has to report its SubScene ready
+first — so a base-driven count reads zero survivors at kickoff and ends the match before it starts.
+
 **`ClientSceneReady` has exactly one producer** (`ClientSceneReadySystem`). If you find yourself
 adding a second path to signal client readiness, that is the bug — not the fix.
 

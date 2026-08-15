@@ -18,6 +18,13 @@ namespace FourCorners.Scripts.Components.Team
         /// recover it later without a second round trip to the client.
         /// </summary>
         public RaceType Race;
+
+        /// <summary>
+        /// This corner's base was destroyed. The slot stays occupied on purpose — a dead corner
+        /// is not up for grabs, and the eliminated player keeps watching rather than being
+        /// silently replaced by the next person to connect.
+        /// </summary>
+        public bool IsEliminated;
     }
 
     /// <summary>Tag to find the match-state entity without a Singleton pattern.</summary>

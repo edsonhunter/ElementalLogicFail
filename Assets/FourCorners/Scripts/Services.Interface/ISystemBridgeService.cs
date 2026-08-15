@@ -79,6 +79,14 @@ namespace FourCorners.Scripts.Services.Interface
         Action OnDisconnected { get; set; }
 
         /// <summary>
+        /// Fired when the match is decided. The argument is true when this player won.
+        ///
+        /// Distinct from <see cref="OnDisconnected"/>: the connection is still up, everyone is
+        /// still watching, and the player chooses when to leave.
+        /// </summary>
+        Action<bool> OnMatchEnded { get; set; }
+
+        /// <summary>
         /// Fired when the server refuses the join because every corner is occupied.
         /// UI subscribes to tell the player instead of leaving them on a silent screen.
         /// </summary>

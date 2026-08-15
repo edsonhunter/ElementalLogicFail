@@ -41,6 +41,7 @@ namespace FourCorners.Scripts.Scenes
 
             _systemBridgeService = GetService<ISystemBridgeService>();
             _systemBridgeService.OnDisconnected += ConnectionLost;
+            _systemBridgeService.OnMatchEnded += MatchEnded;
 
             gameplayScreenUI.Init(onLeave: LeaveMatch);
         }
@@ -52,6 +53,7 @@ namespace FourCorners.Scripts.Scenes
             if (_systemBridgeService == null) return;
 
             _systemBridgeService.OnDisconnected -= ConnectionLost;
+            _systemBridgeService.OnMatchEnded -= MatchEnded;
             _systemBridgeService = null;
 
             // Deliberately NOT unloading the entity scenes here. This runs synchronously, before
@@ -113,6 +115,17 @@ namespace FourCorners.Scripts.Scenes
         /// Unload() — which unloads the entity scenes. Doing that structural work in the middle
         /// of SimulationSystemGroup's own iteration is asking for trouble.
         /// </summary>
+        /// <summary>
+        /// The server declared a winner. Deliberately does not navigate: the player stays in the
+        /// scene watching, and leaves when they want to. Eliminated players get spectating for
+        /// free this way — their client is already receiving every ghost.
+        /// </summary>
+        private void MatchEnded(bool localPlayerWon)
+        {
+            UnityEngine.Debug.Log($"[GameplaySceneController] Match ended. Won={localPlayerWon}.");
+            gameplayScreenUI.ShowMatchResult(localPlayerWon);
+        }
+
         private void ConnectionLost()
         {
             if (_leaving) return;

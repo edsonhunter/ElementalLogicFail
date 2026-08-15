@@ -34,6 +34,9 @@ namespace FourCorners.Scripts.Services
         /// <inheritdoc />
         public Action OnDisconnected { get; set; }
 
+        /// <inheritdoc />
+        public Action<bool> OnMatchEnded { get; set; }
+
         private EntityQuery _wanderAreaQuery;
         private EntityQuery _sceneLoadedQuery;
         private EntityQuery _lobbyStateQuery;

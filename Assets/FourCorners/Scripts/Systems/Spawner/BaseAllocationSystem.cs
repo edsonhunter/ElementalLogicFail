@@ -1,3 +1,4 @@
+using FourCorners.Scripts.Components.Combat;
 using FourCorners.Scripts.Components.Spawner;
 using FourCorners.Scripts.Systems.Connection;
 using Unity.Collections;
@@ -62,6 +63,7 @@ namespace FourCorners.Scripts.Systems.Spawner
             // loop violates ECS safety handles and causes silent failures in the editor.
             var baseLookup = SystemAPI.GetComponentLookup<PlayerBase>(isReadOnly: false);
             var spawnerLookup = SystemAPI.GetComponentLookup<SpawnerData>(isReadOnly: false);
+            var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: false);
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
@@ -87,6 +89,14 @@ namespace FourCorners.Scripts.Systems.Spawner
                         baseData.NetworkId = playerId;
                         baseData.Race = allocation.ValueRO.ApprovedRace;
                         baseLookup[candidate] = baseData;
+
+                        // Full health on claim. A corner released by a disconnect keeps whatever
+                        // damage it took, so without this the next occupant inherits a wreck.
+                        if (healthLookup.TryGetComponent(candidate, out var baseHealth))
+                        {
+                            baseHealth.Current = baseHealth.Max;
+                            healthLookup[candidate] = baseHealth;
+                        }
 
                         baseEntity = candidate;
                         assigned = true;
