@@ -66,7 +66,8 @@ namespace FourCorners.Scripts.Systems.Connection
                 ecb.AddComponent(req, new GoInGameRequest
                 {
                     RequestedTeamIndex = selection.DesiredTeamIndex,
-                    RequestedRace = selection.Race
+                    RequestedRace = selection.Race,
+                    PlayerId = selection.PlayerId
                 });
                 ecb.AddComponent(req, new SendRpcCommandRequest { TargetConnection = entity });
             }

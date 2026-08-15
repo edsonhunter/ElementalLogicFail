@@ -67,7 +67,16 @@ namespace FourCorners.Scripts.Systems.Connection
                     continue;
                 }
 
-                int grantedTeam = ResolveTeam(teamBuffer, request.ValueRO.RequestedTeamIndex);
+                // Reclaim first. A corner held for an absent owner is not free, so ResolveTeam
+                // would never offer it — and handing this player a different corner while their
+                // own base is still standing would be nonsense.
+                int grantedTeam = ResolveReclaim(teamBuffer, request.ValueRO.PlayerId);
+                bool reclaimed = grantedTeam != -1;
+
+                if (!reclaimed)
+                {
+                    grantedTeam = ResolveTeam(teamBuffer, request.ValueRO.RequestedTeamIndex);
+                }
 
                 if (grantedTeam == -1)
                 {
@@ -79,13 +88,26 @@ namespace FourCorners.Scripts.Systems.Connection
                     continue;
                 }
 
-                // Race is always honoured — races are not exclusive, only corners are.
-                teamBuffer[grantedTeam] = new TeamStatusElement
+                if (reclaimed)
                 {
-                    IsOccupied = true,
-                    OccupyingPlayer = sourceConnection,
-                    Race = request.ValueRO.RequestedRace
-                };
+                    // Reattach the connection and change nothing else. The race in particular is
+                    // the one already standing on the field — the base and its visuals were built
+                    // from it, so a different choice on the reconnect screen cannot be honoured.
+                    var held = teamBuffer[grantedTeam];
+                    held.OccupyingPlayer = sourceConnection;
+                    teamBuffer[grantedTeam] = held;
+                }
+                else
+                {
+                    // Race is always honoured — races are not exclusive, only corners are.
+                    teamBuffer[grantedTeam] = new TeamStatusElement
+                    {
+                        IsOccupied = true,
+                        OccupyingPlayer = sourceConnection,
+                        Race = request.ValueRO.RequestedRace,
+                        OwnerId = request.ValueRO.PlayerId
+                    };
+                }
 
                 var networkId = SystemAPI.GetComponent<NetworkId>(sourceConnection);
 
@@ -128,8 +150,9 @@ namespace FourCorners.Scripts.Systems.Connection
                 lobbyChanged = true;
 
                 UnityEngine.Debug.Log(
-                    $"[ServerAcceptGameSystem] Granted Team {grantedTeam} (race {request.ValueRO.RequestedRace}) " +
-                    $"to NetworkId={networkId.Value} (isHost={isHost}). Total players: {playerBuffer.Length}.");
+                    $"[ServerAcceptGameSystem] {(reclaimed ? "Reclaimed" : "Granted")} Team {grantedTeam} " +
+                    $"(race {teamBuffer[grantedTeam].Race}) to NetworkId={networkId.Value} " +
+                    $"(isHost={isHost}). Total players: {playerBuffer.Length}.");
             }
 
             if (!lobbyChanged) return;
@@ -140,6 +163,30 @@ namespace FourCorners.Scripts.Systems.Connection
             // pre-disconnect copy and silently resurrect the departed player's HostNetworkId.
             SystemAPI.SetComponent(matchStateEntity, matchState);
             LobbyBroadcast.SendToAll(ref ecb, playerBuffer, matchState.HostNetworkId);
+        }
+
+        /// <summary>
+        /// Finds the corner being held for this player, or -1.
+        ///
+        /// "Held" is occupied with no live connection — see TeamStatusElement. An empty PlayerId
+        /// never matches, so a client that cannot identify itself simply gets treated as new
+        /// rather than accidentally inheriting someone else's base.
+        /// </summary>
+        private static int ResolveReclaim(in DynamicBuffer<TeamStatusElement> teamBuffer, FixedString64Bytes playerId)
+        {
+            if (playerId.IsEmpty) return -1;
+
+            for (int i = 0; i < teamBuffer.Length; i++)
+            {
+                var slot = teamBuffer[i];
+                if (!slot.IsOccupied) continue;
+                if (slot.OccupyingPlayer != Entity.Null) continue;
+                if (slot.OwnerId != playerId) continue;
+
+                return i;
+            }
+
+            return -1;
         }
 
         /// <summary>Grants the requested slot if free, else the first free slot, else -1.</summary>

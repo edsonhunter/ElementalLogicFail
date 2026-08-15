@@ -1,4 +1,5 @@
 using FourCorners.Scripts.Components.Team;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace FourCorners.Scripts.Components.Connection
@@ -20,10 +21,18 @@ namespace FourCorners.Scripts.Components.Connection
         /// <summary>Chosen race. Independent of which corner is granted.</summary>
         public RaceType Race;
 
+        /// <summary>
+        /// Who this player is, across reconnects. Set by the managed layer from a value that
+        /// outlives the process — NetworkId cannot serve, because the server hands out a fresh one
+        /// every time a connection is established, so a returning player is unrecognisable by it.
+        /// </summary>
+        public FixedString64Bytes PlayerId;
+
         public static LocalPlayerSelection Default => new()
         {
             DesiredTeamIndex = -1,
-            Race = RaceType.Human
+            Race = RaceType.Human,
+            PlayerId = default
         };
     }
 }

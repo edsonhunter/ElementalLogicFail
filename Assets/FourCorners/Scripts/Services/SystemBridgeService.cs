@@ -46,6 +46,41 @@ namespace FourCorners.Scripts.Services
         /// <inheritdoc />
         public bool IsMatchStarted => TryGetQueries(out _) && !_matchStartedQuery.IsEmpty;
 
+        private const string PlayerIdPrefsKey = "FourCorners.LocalPlayerId";
+        private FixedString64Bytes _localPlayerId;
+
+        /// <summary>
+        /// A stable identity for this installation, so a player who drops out of a running match
+        /// can be handed their corner back.
+        ///
+        /// Deliberately not the NetworkId — the server issues a new one on every connection, so a
+        /// returning player looks like a stranger. Deliberately not the UGS PlayerId either: the
+        /// direct-connect path never authenticates, and a player on a LAN with no internet must
+        /// still be able to reconnect.
+        ///
+        /// Persisted so it survives the process, which is exactly the case that matters — a
+        /// crash, or someone closing the game and coming back.
+        /// </summary>
+        private FixedString64Bytes LocalPlayerId
+        {
+            get
+            {
+                if (!_localPlayerId.IsEmpty) return _localPlayerId;
+
+                var stored = PlayerPrefs.GetString(PlayerIdPrefsKey, string.Empty);
+                if (string.IsNullOrEmpty(stored))
+                {
+                    stored = System.Guid.NewGuid().ToString("N");
+                    PlayerPrefs.SetString(PlayerIdPrefsKey, stored);
+                    PlayerPrefs.Save();
+                    Debug.Log($"[SystemBridgeService] Minted a new local player id: {stored}.");
+                }
+
+                _localPlayerId = stored;
+                return _localPlayerId;
+            }
+        }
+
         /// <inheritdoc />
         public bool TryGetLobbyState(out LobbyStateUpdateEvent state)
         {
@@ -171,10 +206,11 @@ namespace FourCorners.Scripts.Services
             query.SetSingleton(new LocalPlayerSelection
             {
                 DesiredTeamIndex = desiredTeamIndex,
-                Race = race
+                Race = race,
+                PlayerId = LocalPlayerId
             });
 
-            Debug.Log($"[SystemBridgeService] Selection set: team={desiredTeamIndex}, race={race}.");
+            Debug.Log($"[SystemBridgeService] Selection set: team={desiredTeamIndex}, race={race}, id={LocalPlayerId}.");
         }
 
         /// <summary>

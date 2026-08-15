@@ -50,9 +50,10 @@ namespace FourCorners.Scripts.Systems.Match
             if (SystemAPI.GetComponent<MatchState>(matchStateEntity).Phase != MatchPhase.Active)
             {
                 // Reset so a second match on the same server world does not inherit a clock that
-                // is already past the threshold.
+                // is already past the threshold — it would open in sudden death.
                 _tickTimer = 0f;
                 _ticksElapsed = 0;
+                SystemAPI.SetComponent(matchStateEntity, new MatchClock());
                 return;
             }
 

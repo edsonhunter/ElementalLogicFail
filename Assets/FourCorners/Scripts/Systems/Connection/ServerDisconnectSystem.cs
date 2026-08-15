@@ -62,7 +62,11 @@ namespace FourCorners.Scripts.Systems.Connection
 
                 int networkId = connectionState.ValueRO.NetworkId;
 
-                ReleaseTeamSlot(ref state, teamBuffer, connectionEntity);
+                // The phase decides whether leaving costs you your corner. In the lobby it is
+                // just a seat nobody has sat in yet; mid-match the corner is a going concern with
+                // minions on the field, and the design is that it keeps playing without you.
+                bool matchInProgress = matchState.Phase == MatchPhase.Active;
+                ReleaseTeamSlot(ref state, teamBuffer, connectionEntity, matchInProgress);
                 RemoveFromRoster(playerBuffer, connectionEntity);
 
                 // ConnectionState is ICleanupComponentData: the entity outlives the connection
@@ -93,11 +97,16 @@ namespace FourCorners.Scripts.Systems.Connection
                     $"[ServerDisconnectSystem] Host re-elected: NetworkId={matchState.HostNetworkId}.");
             }
 
-            // Empty lobby: reset so the next player to arrive starts a clean match.
+            // Nobody left: reset so the next player to arrive starts a clean match. Mid-match this
+            // also has to give back the corners being held for absent owners — there is no one
+            // left to come back for.
             if (playerBuffer.IsEmpty)
             {
+                AbandonMatch(ref state, teamBuffer);
+
                 matchState.Phase = MatchPhase.WaitingForPlayers;
-                UnityEngine.Debug.Log("[ServerDisconnectSystem] Lobby empty — match reset to WaitingForPlayers.");
+                matchState.WinnerNetworkId = 0;
+                UnityEngine.Debug.Log("[ServerDisconnectSystem] Nobody left — match reset to WaitingForPlayers.");
             }
 
             // Written immediately, not through the ECB. ServerAcceptGameSystem runs later in the
@@ -109,15 +118,16 @@ namespace FourCorners.Scripts.Systems.Connection
         }
 
         /// <summary>
-        /// Frees the team slot and deactivates the corner it owned.
+        /// Hands back whatever the departing player was holding.
         ///
-        /// Deactivating is the whole job here. Silencing the spawners and clearing the field is
-        /// CornerTeardownSystem's, which reacts to any corner going inactive — so a corner
-        /// abandoned by a disconnect and one flattened in combat are cleaned up by the same code
-        /// rather than by two copies that drift apart.
+        /// Mid-match (<paramref name="matchInProgress"/>) the corner is *held*, not released: the
+        /// slot stays occupied with no connection attached, and the base is left running. Their
+        /// minions keep walking their lanes and their base keeps taking fire, which is the whole
+        /// point — a dropped player is still in the match and can pick it back up.
         ///
-        /// BaseAllocationSystem's "not already active" guard then lets the corner be granted
-        /// again, including to the same player rejoining.
+        /// In the lobby there is nothing to preserve, so the slot is freed outright and the corner
+        /// deactivated. Deactivating is all that happens here: silencing the spawners and clearing
+        /// the field belongs to CornerTeardownSystem, which reacts to any corner going inactive.
         /// </summary>
         /// <remarks>
         /// Takes `ref SystemState` because it uses SystemAPI: the source generator needs it to
@@ -126,7 +136,8 @@ namespace FourCorners.Scripts.Systems.Connection
         private void ReleaseTeamSlot(
             ref SystemState state,
             DynamicBuffer<TeamStatusElement> teamBuffer,
-            Entity connectionEntity)
+            Entity connectionEntity,
+            bool matchInProgress)
         {
             int releasedTeam = -1;
 
@@ -135,6 +146,21 @@ namespace FourCorners.Scripts.Systems.Connection
                 if (!teamBuffer[i].IsOccupied || teamBuffer[i].OccupyingPlayer != connectionEntity)
                     continue;
 
+                var slot = teamBuffer[i];
+
+                if (matchInProgress)
+                {
+                    // Held. OwnerId, Race and IsEliminated all survive so the corner can be
+                    // recognised and handed back; only the live connection goes.
+                    slot.OccupyingPlayer = Entity.Null;
+                    teamBuffer[i] = slot;
+
+                    UnityEngine.Debug.Log(
+                        $"[ServerDisconnectSystem] Corner {(TeamNumber)i} held for absent owner " +
+                        $"'{slot.OwnerId}' — base and minions keep playing.");
+                    return;
+                }
+
                 teamBuffer[i] = new TeamStatusElement { IsOccupied = false, OccupyingPlayer = Entity.Null };
                 releasedTeam = i;
                 break;
@@ -142,8 +168,13 @@ namespace FourCorners.Scripts.Systems.Connection
 
             if (releasedTeam == -1) return;
 
+            DeactivateCorner(ref state, (TeamNumber)releasedTeam);
+        }
+
+        /// <summary>Marks the corner inactive; CornerTeardownSystem does the rest.</summary>
+        private void DeactivateCorner(ref SystemState state, TeamNumber team)
+        {
             state.CompleteDependency();
-            var team = (TeamNumber)releasedTeam;
             var baseLookup = SystemAPI.GetComponentLookup<PlayerBase>(isReadOnly: false);
 
             using var bases = _baseQuery.ToEntityArray(Allocator.Temp);
@@ -157,6 +188,22 @@ namespace FourCorners.Scripts.Systems.Connection
                 baseData.NetworkId = 0;
                 baseLookup[candidate] = baseData;
                 break;
+            }
+        }
+
+        /// <summary>
+        /// Everyone has gone. Tear the whole match down rather than leaving corners held for
+        /// players who are no longer there — otherwise the slots stay occupied by ghosts, the next
+        /// arrival is told the match is full, and nothing can ever start again.
+        /// </summary>
+        private void AbandonMatch(ref SystemState state, DynamicBuffer<TeamStatusElement> teamBuffer)
+        {
+            for (int i = 0; i < teamBuffer.Length; i++)
+            {
+                if (!teamBuffer[i].IsOccupied) continue;
+
+                teamBuffer[i] = new TeamStatusElement { IsOccupied = false, OccupyingPlayer = Entity.Null };
+                DeactivateCorner(ref state, (TeamNumber)i);
             }
         }
 

@@ -98,8 +98,9 @@ listed in `Packages/manifest.json`. Read `Packages/packages-lock.json` for real 
    simulation needs must be gated to `ServerSimulation` or it will diverge on clients.
 7. **Fighting is the presence of `Engagement`, not a state machine.** `PathFollowSystem` excludes
    it, so a minion stops walking the instant it is engaged and resumes from the same waypoint
-   index when released — there is no "combat mode" to enter or leave. `CollisionSystem` is the
-   only producer (physics contact), `EngagementSystem` the only releaser.
+   index when released — there is no "combat mode" to enter or leave.
+   `EngagementAcquisitionSystem` is the only producer (physics contact), `EngagementSystem` the
+   only releaser.
 8. **`Engagement.Target` is always stale.** It is added and removed through the end-of-frame ECB,
    so every reader must re-check that the target still exists, still has `Health`, and is still
    in range. Do not try to fix this with `[UpdateBefore]`/`[UpdateAfter]` — the removal lands
@@ -107,6 +108,14 @@ listed in `Packages/manifest.json`. Read `Packages/packages-lock.json` for real 
 9. **`Health` alone does not kill.** Only entities tagged `DestroyOnDeath` are destroyed by
    `DeathSystem`. A corner base takes damage but must survive its own destruction as a
    deactivated ghost, so it deliberately carries `Health` without the tag.
+10. **Retiring a corner means setting `PlayerBase.IsActive = false` and nothing else.**
+   `CornerTeardownSystem` reacts to that (via the `ActiveCorner` marker) and owns silencing the
+   spawners and clearing the team's minions. A disconnect and a destroyed base are the same
+   event from here on — do not re-add a second copy of the cleanup to either caller.
+11. **`MatchState` has four writers; `MatchClock` has one.** Anything per-frame belongs in
+   `MatchClock` or its own component. Writers of `MatchState` must use immediate
+   `SystemAPI.SetComponent`, never the end-of-frame ECB — two systems deferring a
+   read-modify-write of the same component replay stale copies over each other.
 
 ---
 
@@ -153,7 +162,9 @@ And the way out (server-authoritative in the same way):
 ```
 BaseAttackSystem           server            unengaged minions damage an enemy base in range
 BaseDestructionSystem      server            Health 0 → PlayerBase.IsActive=false,
-                                             TeamStatusElement.IsEliminated, minions cleared
+                                             TeamStatusElement.IsEliminated
+CornerTeardownSystem       server            corner went inactive → spawners silenced,
+                                             that team's minions cleared (also covers disconnect)
 MatchClockSystem           server            ticks ElapsedSeconds; past the threshold every
                                              live base decays until someone dies
 MatchOutcomeSystem         server            ≤1 uneliminated slot → Ended + WinnerNetworkId
@@ -169,6 +180,19 @@ first — so a base-driven count reads zero survivors at kickoff and ends the ma
 **`ClientSceneReady` has exactly one producer** (`ClientSceneReadySystem`). If you find yourself
 adding a second path to signal client readiness, that is the bug — not the fix.
 
+**A mid-match disconnect does not cost you your corner.** `ServerDisconnectSystem` branches on the
+phase: in the lobby a drop frees the slot outright, but while `Active` the slot stays occupied with
+`OccupyingPlayer = Entity.Null` — the base keeps standing, the spawners keep spawning and the
+minions keep walking. `ServerAcceptGameSystem` checks `ResolveReclaim` (matching
+`TeamStatusElement.OwnerId` against `GoInGameRequest.PlayerId`) *before* handing out a free corner,
+and `BaseAllocationSystem` rebinds a base that is already active rather than resetting it. Never
+use `NetworkId` as that identity — the server issues a fresh one on every connection.
+
+Two consequences worth remembering: a corner held for an absent owner still counts as a survivor in
+`MatchOutcomeSystem`, and when the roster empties entirely `ServerDisconnectSystem.AbandonMatch`
+gives every held corner back — otherwise the slots stay owned by players who will never return and
+the next arrival is told the match is full.
+
 `ServerDisconnectSystem` runs before the accept system and reverses all of it — team slot, roster
 entry, corner deactivation, minion cleanup, host re-election.
 
@@ -177,6 +201,14 @@ look like and what you spawn (not exclusive, always honoured). They are independ
 is an *optional* baked BlobAsset: without it, spawners fall back to their baked `SpawnerPrefab`
 buffer and bases keep their authored visuals — the old race-is-the-corner behaviour. Keep that
 fallback intact when editing `SpawnerSystem` or `BaseRaceVisualSystem`.
+
+**The bridge carries events and commands, not bulk reads.** `ISystemBridgeService` is the sanctioned
+channel for anything the UI *acts on* — commands out, one-shot events in. It is deliberately not
+used for per-frame per-entity data: `CombatFeedbackOverlay` and `MemoryReporter` query
+`ClientServerBootstrap.ClientWorld` directly, because funnelling hundreds of health values through
+`Action` callbacks every frame would be worse than the coupling it avoids. A reader that only
+observes may query the client world; anything that *changes* simulation state goes through the
+bridge.
 
 `PresentationClientTag` marks the single client world that owns the managed scene loader and UI.
 It is created by `SystemBridgeService` into `ClientServerBootstrap.ClientWorld` only. Systems

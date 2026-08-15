@@ -1,4 +1,5 @@
 using FourCorners.Scripts.Components.Team;
+using Unity.Collections;
 using Unity.NetCode;
 
 namespace FourCorners.Scripts.Components.Request
@@ -15,5 +16,11 @@ namespace FourCorners.Scripts.Components.Request
 
         /// <summary>Chosen race. Decides base visuals and the minion roster.</summary>
         public RaceType RequestedRace;
+
+        /// <summary>
+        /// Stable identity, used to hand a returning player back the corner that was held for
+        /// them. Empty for a client that has none — such a player simply cannot reclaim.
+        /// </summary>
+        public FixedString64Bytes PlayerId;
     }
 }

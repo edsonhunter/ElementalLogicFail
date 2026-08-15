@@ -82,34 +82,50 @@ namespace FourCorners.Scripts.Systems.Spawner
                 foreach (var candidate in bases)
                 {
                     if (!baseLookup.TryGetComponent(candidate, out var baseData)) continue;
+                    if (baseData.TeamNumber != approvedTeam) continue;
 
-                    if (baseData.TeamNumber == approvedTeam && !baseData.IsActive)
+                    if (baseData.IsActive)
                     {
-                        baseData.IsActive = true;
+                        // Already running: this is a player reclaiming the corner that was held
+                        // for them while they were away. Rebind the ownership and leave everything
+                        // else exactly as they left it — health, spawner timers, minions mid-lane.
+                        // Reactivating here would hand them a healed base and wipe their army.
                         baseData.NetworkId = playerId;
-                        baseData.Race = allocation.ValueRO.ApprovedRace;
                         baseLookup[candidate] = baseData;
-
-                        // Full health on claim. A corner released by a disconnect keeps whatever
-                        // damage it took, so without this the next occupant inherits a wreck.
-                        if (healthLookup.TryGetComponent(candidate, out var baseHealth))
-                        {
-                            baseHealth.Current = baseHealth.Max;
-                            healthLookup[candidate] = baseHealth;
-                        }
-
-                        // Marks the corner as live so CornerTeardownSystem can spot it going
-                        // inactive later, whether that is a disconnect or a demolished base.
-                        ecb.AddComponent<ActiveCorner>(candidate);
 
                         baseEntity = candidate;
                         assigned = true;
 
                         UnityEngine.Debug.Log(
-                            $"[BaseAllocationSystem] Activated PlayerBase Team={approvedTeam} " +
-                            $"Race={baseData.Race} for NetworkId={playerId}");
+                            $"[BaseAllocationSystem] Rebound live PlayerBase Team={approvedTeam} " +
+                            $"to returning NetworkId={playerId}");
                         break;
                     }
+
+                    baseData.IsActive = true;
+                    baseData.NetworkId = playerId;
+                    baseData.Race = allocation.ValueRO.ApprovedRace;
+                    baseLookup[candidate] = baseData;
+
+                    // Full health on claim. A corner released by a disconnect keeps whatever
+                    // damage it took, so without this the next occupant inherits a wreck.
+                    if (healthLookup.TryGetComponent(candidate, out var baseHealth))
+                    {
+                        baseHealth.Current = baseHealth.Max;
+                        healthLookup[candidate] = baseHealth;
+                    }
+
+                    // Marks the corner as live so CornerTeardownSystem can spot it going
+                    // inactive later, whether that is a disconnect or a demolished base.
+                    ecb.AddComponent<ActiveCorner>(candidate);
+
+                    baseEntity = candidate;
+                    assigned = true;
+
+                    UnityEngine.Debug.Log(
+                        $"[BaseAllocationSystem] Activated PlayerBase Team={approvedTeam} " +
+                        $"Race={baseData.Race} for NetworkId={playerId}");
+                    break;
                 }
 
                 // --- Phase 2: Activate owned Spawners by entity reference ---

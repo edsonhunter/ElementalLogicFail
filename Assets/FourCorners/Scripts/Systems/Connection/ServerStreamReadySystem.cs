@@ -52,12 +52,14 @@ namespace FourCorners.Scripts.Systems.Connection
                 // player chose — recorded at accept time so we need no second client round trip.
                 int grantedTeam = -1;
                 var grantedRace = default(RaceType);
+                bool eliminated = false;
                 for (int i = 0; i < teamBuffer.Length; i++)
                 {
                     if (teamBuffer[i].IsOccupied && teamBuffer[i].OccupyingPlayer == sourceConnection)
                     {
                         grantedTeam = i;
                         grantedRace = teamBuffer[i].Race;
+                        eliminated = teamBuffer[i].IsEliminated;
                         break;
                     }
                 }
@@ -74,6 +76,17 @@ namespace FourCorners.Scripts.Systems.Connection
 
                 // Officially bring connection in-game on the server, starting ghost sync
                 ecb.AddComponent<NetworkStreamInGame>(sourceConnection);
+
+                // A player reconnecting to a corner that died while they were away has nothing to
+                // allocate — their base is rubble and must stay that way. They still come in-game,
+                // so they receive every ghost and can watch the rest of the match.
+                if (eliminated)
+                {
+                    UnityEngine.Debug.Log(
+                        $"[ServerStreamReadySystem] Connection {sourceConnection} rejoined an eliminated " +
+                        $"Team {grantedTeam} — streaming ghosts as a spectator, no base allocated.");
+                    continue;
+                }
 
                 // Allocate their base, triggering BaseAllocationSystem
                 ecb.AddComponent(sourceConnection, new PendingBaseAllocation
