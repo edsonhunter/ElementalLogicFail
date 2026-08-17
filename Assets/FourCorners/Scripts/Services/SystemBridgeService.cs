@@ -1,5 +1,6 @@
 using System;
 using FourCorners.Scripts.Components.Bounds;
+using FourCorners.Scripts.Components.Command;
 using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Request;
 using FourCorners.Scripts.Components.Team;
@@ -36,6 +37,9 @@ namespace FourCorners.Scripts.Services
 
         /// <inheritdoc />
         public Action<bool> OnMatchEnded { get; set; }
+
+        /// <inheritdoc />
+        public Action<BaseCommandType, BaseCommandRejection> OnBaseCommandRejected { get; set; }
 
         private EntityQuery _wanderAreaQuery;
         private EntityQuery _sceneLoadedQuery;
@@ -179,6 +183,44 @@ namespace FourCorners.Scripts.Services
             em.AddComponentData(rpc, new StartGameRequest());
             em.AddComponentData(rpc, new SendRpcCommandRequest()); // no target = server
             Debug.Log("[SystemBridgeService] SendStartGameRequest sent from the presentation client world.");
+        }
+
+        /// <inheritdoc />
+        public void SendBaseCommand(BaseCommandType type, int targetSlot = 0)
+        {
+            var world = ClientServerBootstrap.ClientWorld;
+            if (world is not { IsCreated: true })
+            {
+                Debug.LogWarning("[SystemBridgeService] SendBaseCommand with no client world.");
+                return;
+            }
+
+            if (type == BaseCommandType.None)
+            {
+                // Caught here rather than shipped: the server rejects it anyway, and a round trip
+                // is a slow way to learn that a caller left the argument at its default.
+                Debug.LogWarning("[SystemBridgeService] SendBaseCommand ignored: command type is None.");
+                return;
+            }
+
+            if (targetSlot is < 0 or > byte.MaxValue)
+            {
+                Debug.LogWarning(
+                    $"[SystemBridgeService] SendBaseCommand ignored: slot {targetSlot} does not fit " +
+                    "the wire format.");
+                return;
+            }
+
+            var em = world.EntityManager;
+            var rpc = em.CreateEntity();
+            em.AddComponentData(rpc, new BaseCommandRequest
+            {
+                Type = type,
+                TargetSlot = (byte)targetSlot
+            });
+            em.AddComponentData(rpc, new SendRpcCommandRequest()); // no target = server
+
+            Debug.Log($"[SystemBridgeService] SendBaseCommand {type} slot={targetSlot}.");
         }
 
         /// <inheritdoc />

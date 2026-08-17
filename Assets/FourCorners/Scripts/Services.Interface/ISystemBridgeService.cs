@@ -1,4 +1,5 @@
 using System;
+using FourCorners.Scripts.Components.Command;
 using FourCorners.Scripts.Components.Team;
 using UnityEngine;
 
@@ -93,10 +94,36 @@ namespace FourCorners.Scripts.Services.Interface
         Action OnJoinRejected { get; set; }
 
         /// <summary>
+        /// Fired when the server refuses a base command. Carries the command that failed and why,
+        /// so the HUD can say something specific rather than shrugging.
+        ///
+        /// Every press gets its own event — the server answers each request, and coalescing them
+        /// would make a run of failures look like one.
+        /// </summary>
+        Action<BaseCommandType, BaseCommandRejection> OnBaseCommandRejected { get; set; }
+
+        /// <summary>
         /// Called by the Host's Start button. Creates a StartGameRequest RPC entity
         /// inside the presentation client world and sends it to the server.
         /// </summary>
         void SendStartGameRequest();
+
+        /// <summary>
+        /// Asks the server to do something to this player's base.
+        ///
+        /// Note the absence of any "which base" argument: the server derives the corner from the
+        /// connection this arrives on, so there is nothing here for a caller to get wrong or for a
+        /// modified client to lie about. See BaseCommandRequest.
+        ///
+        /// Fire and forget. There is no success callback — success shows up as replicated state
+        /// changing — and failure arrives on <see cref="OnBaseCommandRejected"/>. A caller must
+        /// never assume the command took effect.
+        /// </summary>
+        /// <param name="targetSlot">
+        /// Which slot of the addressed building, for commands where that means anything. Ignored
+        /// otherwise.
+        /// </param>
+        void SendBaseCommand(BaseCommandType type, int targetSlot = 0);
 
         /// <summary>
         /// Publishes this service to <see cref="ClientBridgeRegistry"/> so the client world's

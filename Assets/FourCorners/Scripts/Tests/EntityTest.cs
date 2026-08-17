@@ -1,4 +1,5 @@
 using FourCorners.Scripts.Components.Combat;
+using FourCorners.Scripts.Components.Command;
 using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Minion;
 using FourCorners.Scripts.Components.Request;
@@ -6,6 +7,7 @@ using FourCorners.Scripts.Components.Spawner;
 using FourCorners.Scripts.Components.Team;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Transforms;
 
 namespace FourCorners.Scripts.Tests
@@ -114,6 +116,37 @@ namespace FourCorners.Scripts.Tests
             {
                 slots.Add(new TeamStatusElement { IsOccupied = false, OccupyingPlayer = Entity.Null });
             }
+
+            return entity;
+        }
+
+        /// <summary>
+        /// Creates the pair of components a base command arrives as on the server.
+        ///
+        /// ReceiveRpcCommandRequest is ordinary IComponentData, so a command can be delivered by
+        /// hand without a live connection — which is the only reason ServerBaseCommandSystem is
+        /// testable at all. Everything else in the connection pipeline needs a real NetCode
+        /// handshake and is therefore not covered here.
+        /// </summary>
+        public static Entity CreateBaseCommandRpc(
+            EntityManager entityManager,
+            Entity sourceConnection,
+            BaseCommandType type,
+            byte targetSlot = 0)
+        {
+            var entity = entityManager.CreateEntity(
+                typeof(BaseCommandRequest),
+                typeof(ReceiveRpcCommandRequest));
+
+            entityManager.SetComponentData(entity, new BaseCommandRequest
+            {
+                Type = type,
+                TargetSlot = targetSlot
+            });
+            entityManager.SetComponentData(entity, new ReceiveRpcCommandRequest
+            {
+                SourceConnection = sourceConnection
+            });
 
             return entity;
         }

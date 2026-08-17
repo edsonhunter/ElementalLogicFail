@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using FourCorners.Scripts.Components.Command;
 using FourCorners.Scripts.Controller;
 using FourCorners.Scripts.Manager.Interface;
 using FourCorners.Scripts.Manager.Interface.Camera;
@@ -26,6 +27,13 @@ namespace FourCorners.Scripts.Scenes
         private ISystemBridgeService _systemBridgeService;
         private (Vector3 min, Vector3 max) _bounds;
 
+        /// <summary>
+        /// Temporary. Attached here instead of placed in the scene so that removing it when the
+        /// Tier 1.4 HUD lands costs a file deletion rather than a scene edit. See the type's own
+        /// note for why the command channel needs an affordance at all this early.
+        /// </summary>
+        private BaseCommandDebugOverlay _commandDebugOverlay;
+
         /// <summary>Leaving and being dropped can race; only the first one gets to navigate.</summary>
         private bool _leaving;
 
@@ -42,8 +50,12 @@ namespace FourCorners.Scripts.Scenes
             _systemBridgeService = GetService<ISystemBridgeService>();
             _systemBridgeService.OnDisconnected += ConnectionLost;
             _systemBridgeService.OnMatchEnded += MatchEnded;
+            _systemBridgeService.OnBaseCommandRejected += CommandRejected;
 
             gameplayScreenUI.Init(onLeave: LeaveMatch);
+
+            _commandDebugOverlay = gameObject.AddComponent<BaseCommandDebugOverlay>();
+            _commandDebugOverlay.Init(_systemBridgeService.SendBaseCommand);
         }
 
         protected override void Unload()
@@ -54,6 +66,7 @@ namespace FourCorners.Scripts.Scenes
 
             _systemBridgeService.OnDisconnected -= ConnectionLost;
             _systemBridgeService.OnMatchEnded -= MatchEnded;
+            _systemBridgeService.OnBaseCommandRejected -= CommandRejected;
             _systemBridgeService = null;
 
             // Deliberately NOT unloading the entity scenes here. This runs synchronously, before
@@ -124,6 +137,19 @@ namespace FourCorners.Scripts.Scenes
         {
             UnityEngine.Debug.Log($"[GameplaySceneController] Match ended. Won={localPlayerWon}.");
             gameplayScreenUI.ShowMatchResult(localPlayerWon);
+        }
+
+        /// <summary>
+        /// The server refused a base command. Surfaced rather than swallowed: a command that
+        /// silently does nothing is indistinguishable from a broken channel, which is precisely the
+        /// confusion the rejection message exists to prevent.
+        /// </summary>
+        private void CommandRejected(BaseCommandType type, BaseCommandRejection reason)
+        {
+            UnityEngine.Debug.Log($"[GameplaySceneController] Command {type} rejected: {reason}.");
+
+            if (_commandDebugOverlay != null)
+                _commandDebugOverlay.ShowRejection(type, reason);
         }
 
         private void ConnectionLost()

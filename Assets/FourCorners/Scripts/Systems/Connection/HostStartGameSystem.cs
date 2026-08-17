@@ -39,9 +39,8 @@ namespace FourCorners.Scripts.Systems.Connection
 
         public void OnUpdate(ref SystemState state)
         {
-            var matchState      = SystemAPI.GetSingletonRW<MatchState>();
-            var playerBuffer    = SystemAPI.GetSingletonBuffer<ConnectedPlayerElement>(isReadOnly: true);
-            var matchStateEntity = SystemAPI.GetSingletonEntity<MatchStateTag>();
+            var matchState   = SystemAPI.GetSingletonRW<MatchState>();
+            var playerBuffer = SystemAPI.GetSingletonBuffer<ConnectedPlayerElement>(isReadOnly: true);
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
@@ -85,11 +84,13 @@ namespace FourCorners.Scripts.Systems.Connection
                 }
 
                 // --- Transition to Active ---
-                // Copy-then-mutate: constructing a fresh MatchState here would silently reset
-                // every other field on it (HostNetworkId).
-                var updated = matchState.ValueRO;
-                updated.Phase = MatchPhase.Active;
-                ecb.SetComponent(matchStateEntity, updated);
+                // Written in place, and immediately. Deferring this to the end-of-frame ECB made
+                // it a read-modify-write racing the two systems that write MatchState directly:
+                // a host re-election in ServerDisconnectSystem earlier in the same frame would be
+                // replayed away at playback, restoring a HostNetworkId belonging to a player who
+                // had just left. Touching only Phase also means nothing else on the component can
+                // be clobbered by accident.
+                matchState.ValueRW.Phase = MatchPhase.Active;
 
                 // --- Broadcast MatchStartedRpc to ALL connected clients ---
                 // This triggers ClientMatchStartedSystem on every client,

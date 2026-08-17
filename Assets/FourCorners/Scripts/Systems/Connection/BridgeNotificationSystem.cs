@@ -1,5 +1,7 @@
+using FourCorners.Scripts.Components.Command;
 using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Services.Interface;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
@@ -38,6 +40,7 @@ namespace FourCorners.Scripts.Systems.Connection
         private EntityQuery _matchEndedQuery;
         private EntityQuery _joinRejectedQuery;
         private EntityQuery _disconnectedQuery;
+        private EntityQuery _commandRejectedQuery;
 
         protected override void OnCreate()
         {
@@ -48,6 +51,7 @@ namespace FourCorners.Scripts.Systems.Connection
             _matchEndedQuery = GetEntityQuery(ComponentType.ReadOnly<MatchEndedTag>());
             _joinRejectedQuery = GetEntityQuery(ComponentType.ReadOnly<JoinRejectedTag>());
             _disconnectedQuery = GetEntityQuery(ComponentType.ReadOnly<ClientDisconnectedTag>());
+            _commandRejectedQuery = GetEntityQuery(ComponentType.ReadOnly<BaseCommandRejectedTag>());
         }
 
         // Note OnCreate builds queries only — deliberately no world check there.
@@ -96,6 +100,22 @@ namespace FourCorners.Scripts.Systems.Connection
             if (joinRejected && !_joinRejectedPresent)
                 _service.OnJoinRejected?.Invoke();
             _joinRejectedPresent = joinRejected;
+
+            // Not edge-triggered, unlike everything above it. Those are states, and asking twice
+            // whether the match has started is the same question; a rejection is an answer to one
+            // specific press, so every one is delivered and then consumed.
+            if (!_commandRejectedQuery.IsEmpty)
+            {
+                using var rejections =
+                    _commandRejectedQuery.ToComponentDataArray<BaseCommandRejectedTag>(Allocator.Temp);
+
+                // Destroyed before the fan-out: a subscriber is free to send another command from
+                // inside the callback, and clearing afterwards would take its rejection with it.
+                EntityManager.DestroyEntity(_commandRejectedQuery);
+
+                for (int i = 0; i < rejections.Length; i++)
+                    _service.OnBaseCommandRejected?.Invoke(rejections[i].Type, rejections[i].Reason);
+            }
 
             // Last, so a disconnect arriving on the same frame as a lobby update still lets that
             // update through before the version is rewound for the next session.
