@@ -114,8 +114,14 @@ listed in `Packages/manifest.json`. Read `Packages/packages-lock.json` for real 
    event from here on — do not re-add a second copy of the cleanup to either caller.
 11. **`MatchState` has four writers; `MatchClock` has one.** Anything per-frame belongs in
    `MatchClock` or its own component. Writers of `MatchState` must use immediate
-   `SystemAPI.SetComponent`, never the end-of-frame ECB — two systems deferring a
-   read-modify-write of the same component replay stale copies over each other.
+   `SystemAPI.SetComponent` or `GetSingletonRW`, never the end-of-frame ECB — two systems
+   deferring a read-modify-write of the same component replay stale copies over each other.
+   `HostStartGameSystem` was doing exactly that and would have restored a departed player's
+   `HostNetworkId` over a same-frame re-election.
+12. **A client may describe what it wants, never what it wants it done to.** Every gameplay
+   message resolves its target from the connection it arrived on. `BaseCommandRequest` is the
+   pattern to copy; see the gameplay-commands section for why widening that payload is the one
+   change to refuse.
 
 ---
 
@@ -216,6 +222,82 @@ discriminate on this tag, never on "does this world have a managed service attac
 
 ---
 
+## Gameplay commands (the only path from a player into the simulation)
+
+```
+BaseCommandDebugOverlay    client   → ISystemBridgeService.SendBaseCommand(type, slot)
+                                      (scaffold; the Tier 1.4 HUD replaces it)
+SystemBridgeService        client   → BaseCommandRequest{Type, TargetSlot}   [untrusted]
+ServerBaseCommandSystem    server     connection → owned corner → live base
+                                      → BaseCommand{BaseEntity, Team, ...}   [trusted]
+                                      | BaseCommandRejectedRpc{Type, Reason}
+<per-type handler systems> server     act, and set BaseCommand.Handled       (1.2 / 1.3)
+BaseCommandCleanupSystem   server     destroys every intent, warns on unhandled
+ClientBaseCommandRejected  client   → BaseCommandRejectedTag
+BridgeNotificationSystem   client   → ISystemBridgeService.OnBaseCommandRejected
+```
+
+**`BaseCommandRequest` names no base, no team and no player.** The corner comes from
+`ReceiveRpcCommandRequest.SourceConnection` matched against `TeamStatusElement.OccupyingPlayer`,
+which is server-owned state. Adding a target to that payload would make "command someone else's
+base" expressible, and it is the first thing anyone would forge — putting a `TeamNumber` or an
+`Entity` in there is the change to refuse, however convenient it looks.
+
+**A held corner cannot be commanded.** Its slot carries `OccupyingPlayer = Entity.Null`, so it
+matches no sender. A player who dropped out keeps fighting and stops building — deliberate, and
+the reason `ResolveOwnedTeam` compares the connection rather than `OwnerId`.
+
+**An accepted command lives exactly one frame.** It is created through the end-of-frame ECB, so it
+first appears the frame after the RPC arrived; `BaseCommandCleanupSystem` destroys every one it
+sees. Handlers therefore need no bookkeeping about what they have already processed. Two rules
+follow: a handler must not be `OrderLast` (its `Handled` write would land after the cleanup pass
+judged it), and `BaseCommandCleanupSystem` must stay `[UpdateBefore(EndSimulationEntityCommand
+BufferSystem)]` — both are `OrderLast`, ordering inside that bucket is otherwise arbitrary, and
+sorting the wrong way round would push the destroy into the next frame's buffer and make every
+handler apply the same command twice.
+
+---
+
+## Design principles
+
+Patterns this codebase has converged on, and the traps that produced them. These are guidance, not
+invariants — but departing from one is worth a sentence saying why.
+
+**Extend with a system, not a branch.** The ECS shape of Open/Closed. A `switch` over a kind-enum
+inside a system means every new kind edits a file that already works and already has tests;
+splitting the same logic across queries means every new kind is purely additive.
+`ServerBaseCommandSystem` deliberately does not know what any command *does* — it authenticates and
+emits an intent, and each command type gets its own handler. Same instinct as `DestroyOnDeath`:
+opting in with a tag rather than teaching `DeathSystem` about a list of exceptions.
+
+**The zero value of an enum must be the invalid one.** ECS zero-initialises constantly —
+`AddComponent`, buffer growth, `NativeArray`, `ecb.CreateEntity` — so an enum whose `0` is a
+legitimate value can never distinguish "unset" from "that value". `BaseCommandType.None = 0` exists
+for this reason. `TeamNumber.Team1 = 0` is the counter-example already in the project: a
+`default(MinionData)` silently claims to be Team 1, and nothing can detect it. It cannot be changed
+now — `TeamStatusElement` is indexed by `(int)TeamNumber` — so treat it as a known sharp edge and
+don't add a second one.
+
+**Report at the boundary, and never fail silently.** ECS has no equivalent of an unhandled
+exception: a query that matches nothing, a command nobody consumes, and a system whose
+`RequireForUpdate` is never satisfied are all indistinguishable from "working". Where a system's
+whole contract is that something downstream reacts, say so out loud when nothing does —
+`BaseCommandCleanupSystem`'s unhandled warning and `BaseAllocationSystem`'s throttled yield log are
+both there because the silent version cost hours.
+
+**Parallel report, serial apply.** For anything where jobs must agree about a shared outcome, fan
+out into a `NativeQueue`/`NativeList` in parallel and drain it single-threaded. `AttackSystem` does
+this because damage cannot be applied concurrently without two attackers both "killing" the same
+target. Reach for it before reaching for a lock or a main-thread loop.
+
+**Watch `ISystemBridgeService` for interface bloat.** It is one interface covering four unrelated
+concerns — lobby state, match lifecycle, scene/bounds, gameplay commands — and Tier 1.4 will push it
+past twenty members. Every consumer already depends on all of it. Splitting it along those seams
+costs almost nothing (the DI container resolves by type, and the `View` layer takes injected
+delegates rather than the service), so split when a fifth concern shows up rather than after.
+
+---
+
 ## Working on this repo
 
 - ECS structural changes land at **end of frame** via the ECB singleton, so a producer and its
@@ -225,6 +307,12 @@ discriminate on this tag, never on "does this world have a managed service attac
 - Tests are EditMode-only (`FourCorners.Tests.asmdef` restricts platforms to Editor).
   Run via Test Runner; `Tests/EntityTest.cs` holds the archetype factories — if a system's query
   changes, that file must change with it.
+- **A server RPC handler is testable without NetCode.** `ReceiveRpcCommandRequest` is ordinary
+  `IComponentData`, so a request can be delivered by hand in the bare-World fixture — see
+  `EntityTest.CreateBaseCommandRpc` and `ServerBaseCommandSystemTest`. What is *not* reachable is
+  anything needing a live connection: `NetworkId` assignment, `SendRpcCommandRequest` actually
+  going anywhere, and the accept/disconnect handshake. Keep validation logic in the handler where
+  a test can reach it, rather than in whatever the transport happens to do.
 - Verify multiplayer changes with `Assets/Settings/PlayMode/ServerAndHost.asset` and **2+ virtual
   players**. A single client masks the entire class of world-discrimination bugs.
 - Relay-only failures are usually `[GhostComponent]`-on-RPC or child-entity ghost config — both
