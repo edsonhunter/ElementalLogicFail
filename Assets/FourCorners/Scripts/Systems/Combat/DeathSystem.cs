@@ -11,8 +11,10 @@ namespace FourCorners.Scripts.Systems.Combat
     /// health too, and must survive its own destruction as a deactivated ghost — so death is opt
     /// in rather than something every damageable thing inherits.
     ///
-    /// This is where the kill reward will be emitted once Tier 1.2 introduces an economy; it is
-    /// the one place that knows a unit actually died rather than merely got hurt.
+    /// It deliberately does *not* pay the kill bounty, though an earlier note here expected it to.
+    /// This system sees the corpse but not who made it: by the time a dead entity turns up in this
+    /// query, the blow that killed it is long resolved. <c>ApplyDamageJob</c> knows both at once and
+    /// emits <see cref="KillEvent"/> there instead.
     /// </summary>
     [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]

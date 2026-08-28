@@ -35,6 +35,23 @@ namespace FourCorners.Scripts.Components.Command
         /// The sender owns a slot but no live base answers to it. Normal for the handful of frames
         /// between being granted a corner and BaseAllocationSystem activating it.
         /// </summary>
-        BaseUnavailable = 5
+        BaseUnavailable = 5,
+
+        // ── Raised by command handlers rather than the dispatcher ────────────────────────────
+        // The dispatcher settles identity; everything below is a question only the system that
+        // implements a particular command can answer.
+
+        /// <summary>The command costs more gold than the corner has.</summary>
+        InsufficientFunds = 6,
+
+        /// <summary>The building is already at its highest level.</summary>
+        LevelCapped = 7,
+
+        /// <summary>
+        /// The addressed building does not exist — a slot outside the range this base has, or a
+        /// building the command does not apply to. TargetSlot is unvalidated client input until a
+        /// handler checks it, and this is that check failing.
+        /// </summary>
+        NoSuchBuilding = 8
     }
 }

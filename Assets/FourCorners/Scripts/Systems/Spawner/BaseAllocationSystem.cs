@@ -1,4 +1,6 @@
+using FourCorners.Scripts.Components.Building;
 using FourCorners.Scripts.Components.Combat;
+using FourCorners.Scripts.Components.Economy;
 using FourCorners.Scripts.Components.Spawner;
 using FourCorners.Scripts.Systems.Connection;
 using Unity.Collections;
@@ -64,6 +66,8 @@ namespace FourCorners.Scripts.Systems.Spawner
             var baseLookup = SystemAPI.GetComponentLookup<PlayerBase>(isReadOnly: false);
             var spawnerLookup = SystemAPI.GetComponentLookup<SpawnerData>(isReadOnly: false);
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: false);
+            var economyLookup = SystemAPI.GetComponentLookup<PlayerEconomy>(isReadOnly: false);
+            var buildingLookup = SystemAPI.GetComponentLookup<BuildingData>(isReadOnly: false);
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
@@ -76,6 +80,10 @@ namespace FourCorners.Scripts.Systems.Spawner
                 int playerId = networkId.ValueRO.Value;
                 var approvedTeam = allocation.ValueRO.ApprovedTeam;
                 bool assigned = false;
+
+                // Distinct from `assigned`, which is also true for a returning player. Only a
+                // genuinely new occupant gets the corner wound back to its authored state.
+                bool freshClaim = false;
                 Entity baseEntity = Entity.Null;
 
                 // --- Phase 1: Activate the PlayerBase ---
@@ -115,12 +123,35 @@ namespace FourCorners.Scripts.Systems.Spawner
                         healthLookup[candidate] = baseHealth;
                     }
 
+                    // Same reasoning for the purse: a fresh occupant starts on the baked opening
+                    // balance rather than inheriting whatever the last player left behind. Note
+                    // this branch is the *claim* path only — the rebind above deliberately leaves
+                    // a returning player's gold exactly as they left it.
+                    if (economyLookup.TryGetComponent(candidate, out var economy))
+                    {
+                        economy.Gold = economy.StartingGold;
+                        economy.Accrued = 0f;
+                        economyLookup[candidate] = economy;
+                    }
+
+                    // Upgrades bought by whoever held this corner before are not inherited either.
+                    // This matters between matches: when the roster empties, AbandonMatch frees
+                    // every corner, and without this the next match would open on the last one's
+                    // fully upgraded buildings. Resetting is a single assignment precisely because
+                    // Level is the only thing an upgrade ever wrote.
+                    if (buildingLookup.TryGetComponent(candidate, out var central))
+                    {
+                        central.Level = 0;
+                        buildingLookup[candidate] = central;
+                    }
+
                     // Marks the corner as live so CornerTeardownSystem can spot it going
                     // inactive later, whether that is a disconnect or a demolished base.
                     ecb.AddComponent<ActiveCorner>(candidate);
 
                     baseEntity = candidate;
                     assigned = true;
+                    freshClaim = true;
 
                     UnityEngine.Debug.Log(
                         $"[BaseAllocationSystem] Activated PlayerBase Team={approvedTeam} " +
@@ -141,6 +172,15 @@ namespace FourCorners.Scripts.Systems.Spawner
                             spawnerData.NetworkId = playerId;
                             spawnerData.IsActive = true; // mirror for client ghost replication
                             spawnerLookup[spawnerEntity] = spawnerData;
+
+                            // Barracks levels follow the same rule as the purse: wiped for a new
+                            // occupant, left alone for a returning one, who should find the corner
+                            // exactly as they built it.
+                            if (freshClaim && buildingLookup.TryGetComponent(spawnerEntity, out var barracks))
+                            {
+                                barracks.Level = 0;
+                                buildingLookup[spawnerEntity] = barracks;
+                            }
                         }
                     }
 

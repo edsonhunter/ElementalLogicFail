@@ -89,13 +89,13 @@ namespace FourCorners.Scripts.Systems.Command
 
                 if (type == BaseCommandType.None)
                 {
-                    Reject(ref ecb, sender, type, BaseCommandRejection.MalformedCommand);
+                    CommandRejection.Send(ref ecb, state.EntityManager, sender, type, BaseCommandRejection.MalformedCommand);
                     continue;
                 }
 
                 if (matchState.Phase != MatchPhase.Active)
                 {
-                    Reject(ref ecb, sender, type, BaseCommandRejection.MatchNotActive);
+                    CommandRejection.Send(ref ecb, state.EntityManager, sender, type, BaseCommandRejection.MatchNotActive);
                     continue;
                 }
 
@@ -105,13 +105,13 @@ namespace FourCorners.Scripts.Systems.Command
                     UnityEngine.Debug.LogWarning(
                         $"[ServerBaseCommandSystem] {type} from connection {sender}, which occupies " +
                         "no corner. Rejected.");
-                    Reject(ref ecb, sender, type, BaseCommandRejection.NotYourBase);
+                    CommandRejection.Send(ref ecb, state.EntityManager, sender, type, BaseCommandRejection.NotYourBase);
                     continue;
                 }
 
                 if (teamBuffer[ownedTeam].IsEliminated)
                 {
-                    Reject(ref ecb, sender, type, BaseCommandRejection.Eliminated);
+                    CommandRejection.Send(ref ecb, state.EntityManager, sender, type, BaseCommandRejection.Eliminated);
                     continue;
                 }
 
@@ -120,7 +120,7 @@ namespace FourCorners.Scripts.Systems.Command
                 {
                     // Ordinary for the few frames between the slot being granted and
                     // BaseAllocationSystem activating the corner.
-                    Reject(ref ecb, sender, type, BaseCommandRejection.BaseUnavailable);
+                    CommandRejection.Send(ref ecb, state.EntityManager, sender, type, BaseCommandRejection.BaseUnavailable);
                     continue;
                 }
 
@@ -162,17 +162,6 @@ namespace FourCorners.Scripts.Systems.Command
             }
 
             return -1;
-        }
-
-        private static void Reject(
-            ref EntityCommandBuffer ecb,
-            Entity sender,
-            BaseCommandType type,
-            BaseCommandRejection reason)
-        {
-            var rpc = ecb.CreateEntity();
-            ecb.AddComponent(rpc, new BaseCommandRejectedRpc { Type = type, Reason = reason });
-            ecb.AddComponent(rpc, new SendRpcCommandRequest { TargetConnection = sender });
         }
     }
 }

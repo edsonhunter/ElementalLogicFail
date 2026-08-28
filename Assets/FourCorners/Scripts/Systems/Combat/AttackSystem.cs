@@ -1,4 +1,5 @@
 using FourCorners.Scripts.Components.Combat;
+using FourCorners.Scripts.Components.Minion;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -28,14 +29,17 @@ namespace FourCorners.Scripts.Systems.Combat
     {
         private ComponentLookup<Health> _healthLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<MinionData> _minionLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<Engagement>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
             _healthLookup = state.GetComponentLookup<Health>();
             _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _minionLookup = state.GetComponentLookup<MinionData>(true);
         }
 
         [BurstCompile]
@@ -43,6 +47,7 @@ namespace FourCorners.Scripts.Systems.Combat
         {
             _healthLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            _minionLookup.Update(ref state);
 
             // WorldUpdateAllocator: freed automatically at the end of the frame, so there is no
             // Dispose to forget and no persistent allocation for a per-frame scratch buffer.
@@ -59,7 +64,10 @@ namespace FourCorners.Scripts.Systems.Combat
             var applyJob = new ApplyDamageJob
             {
                 DamageEvents = damageEvents,
-                HealthLookup = _healthLookup
+                HealthLookup = _healthLookup,
+                MinionLookup = _minionLookup,
+                Ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                    .CreateCommandBuffer(state.WorldUnmanaged)
             };
             state.Dependency = applyJob.Schedule(state.Dependency);
         }
@@ -131,12 +139,23 @@ namespace FourCorners.Scripts.Systems.Combat
     /// before any are *applied*, so two evenly matched minions both swing on the frame either of
     /// them dies. Resolving them one at a time, and dropping the blow of an attacker that is
     /// already dead by the time its turn comes up, is what leaves someone standing to walk on.
+    ///
+    /// It is also the only code in the project that knows a blow was *lethal* and who threw it, so
+    /// it is where <see cref="KillEvent"/> is reported. DeathSystem sees the corpse but not the
+    /// killer; the report pass sees the killer but not whether the blow landed last. Bounty
+    /// arithmetic itself stays out of here — this states the fact, BountySystem decides what it is
+    /// worth.
     /// </summary>
     [BurstCompile]
     public struct ApplyDamageJob : IJob
     {
         public NativeQueue<DamageEvent> DamageEvents;
         public ComponentLookup<Health> HealthLookup;
+
+        /// <summary>Teams, for attributing a kill. A victim with no MinionData earns no bounty.</summary>
+        [ReadOnly] public ComponentLookup<MinionData> MinionLookup;
+
+        public EntityCommandBuffer Ecb;
 
         public void Execute()
         {
@@ -154,11 +173,44 @@ namespace FourCorners.Scripts.Systems.Combat
 
                 var health = HealthLookup[damage.Target];
 
+                // Captured before the subtraction. Several attackers can queue damage onto a target
+                // that the first of them kills, so "reached zero" is not the same question as "is
+                // at zero" — without this the second swing would report a second kill on a corpse.
+                bool wasAlive = health.Current > 0;
+
                 // Clamped at zero so overkill cannot wrap into a negative that later reads as
                 // "alive" if anything ever compares against a specific value instead of <= 0.
                 health.Current = math.max(0, health.Current - damage.Amount);
                 HealthLookup[damage.Target] = health;
+
+                if (!wasAlive || health.Current > 0) continue;
+
+                ReportKill(damage);
             }
+        }
+
+        /// <summary>
+        /// Records who killed whom, by team.
+        ///
+        /// Both sides must resolve or nothing is reported. TeamNumber's zero value is a legitimate
+        /// team (Team1), so an unresolved lookup cannot be represented as "no team" — guessing here
+        /// would quietly pay the wrong corner rather than fail visibly.
+        ///
+        /// A base is not a minion, so a corner falling produces no kill event. That is deliberate:
+        /// BaseDestructionSystem owns that event, and it means far more than a bounty.
+        /// </summary>
+        private void ReportKill(in DamageEvent damage)
+        {
+            if (!MinionLookup.TryGetComponent(damage.Target, out var victim)) return;
+            if (!MinionLookup.TryGetComponent(damage.Attacker, out var killer)) return;
+            if (killer.TeamNumber == victim.TeamNumber) return;
+
+            var kill = Ecb.CreateEntity();
+            Ecb.AddComponent(kill, new KillEvent
+            {
+                KillerTeam = killer.TeamNumber,
+                VictimTeam = victim.TeamNumber
+            });
         }
     }
 }

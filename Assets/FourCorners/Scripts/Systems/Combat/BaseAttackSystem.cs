@@ -31,12 +31,14 @@ namespace FourCorners.Scripts.Systems.Combat
     public partial struct BaseAttackSystem : ISystem
     {
         private ComponentLookup<Health> _healthLookup;
+        private ComponentLookup<MinionData> _minionLookup;
         private EntityQuery _baseQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _healthLookup = state.GetComponentLookup<Health>();
+            _minionLookup = state.GetComponentLookup<MinionData>(true);
 
             _baseQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<PlayerBase, LocalTransform, Health>()
@@ -44,12 +46,14 @@ namespace FourCorners.Scripts.Systems.Combat
 
             state.RequireForUpdate(_baseQuery);
             state.RequireForUpdate<MinionData>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _healthLookup.Update(ref state);
+            _minionLookup.Update(ref state);
 
             var baseEntities = _baseQuery.ToEntityArray(state.WorldUpdateAllocator);
             var baseData = _baseQuery.ToComponentDataArray<PlayerBase>(state.WorldUpdateAllocator);
@@ -67,11 +71,15 @@ namespace FourCorners.Scripts.Systems.Combat
             state.Dependency = reportJob.ScheduleParallel(state.Dependency);
 
             // Same apply pass as minion combat: many minions share one base, so the write has to
-            // funnel through a single thread.
+            // funnel through a single thread. Its kill reporting stays dormant here — a base is not
+            // a minion, so no bounty is ever attributed for the damage this system deals.
             var applyJob = new ApplyDamageJob
             {
                 DamageEvents = damageEvents,
-                HealthLookup = _healthLookup
+                HealthLookup = _healthLookup,
+                MinionLookup = _minionLookup,
+                Ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                    .CreateCommandBuffer(state.WorldUnmanaged)
             };
             state.Dependency = applyJob.Schedule(state.Dependency);
         }

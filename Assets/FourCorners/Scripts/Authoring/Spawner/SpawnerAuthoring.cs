@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FourCorners.Scripts.Components.Building;
 using FourCorners.Scripts.Components.Minion;
 using Unity.Entities;
 using UnityEngine;
@@ -53,6 +54,16 @@ namespace FourCorners.Scripts.Authoring.Spawner
                     Timer = 0,
                     IsActive = false,
                     LaneIndex = authoring.laneIndex
+                });
+
+                // A spawner *is* a barracks. Its upgrade level is the only mutable part; the
+                // authored SpawnAmount and SpawnInterval above stay the level-zero baseline that
+                // SpawnerSystem derives from.
+                AddComponent(entity, new Components.Building.BuildingData
+                {
+                    Type = BuildingType.Barracks,
+                    Slot = (byte)authoring.laneIndex,
+                    Level = 0
                 });
 
                 // Unit prefab types this spawner can produce

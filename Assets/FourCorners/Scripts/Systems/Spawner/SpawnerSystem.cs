@@ -1,8 +1,10 @@
+using FourCorners.Scripts.Components.Building;
 using FourCorners.Scripts.Components.Connection;
 using FourCorners.Scripts.Components.Minion;
 using FourCorners.Scripts.Components.Request;
 using FourCorners.Scripts.Components.Spawner;
 using FourCorners.Scripts.Components.Team;
+using FourCorners.Scripts.Systems.Building;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -54,6 +56,7 @@ namespace FourCorners.Scripts.Systems.Spawner
                 Ecb = ecb,
                 Seed = (uint)(SystemAPI.Time.ElapsedTime * 1000f) + 1,
                 PlayerBaseLookup = playerBaseLookup,
+                BuildingLookup = SystemAPI.GetComponentLookup<BuildingData>(isReadOnly: true),
                 RaceCatalog = raceCatalog.Value
             };
 
@@ -70,6 +73,12 @@ namespace FourCorners.Scripts.Systems.Spawner
 
         [ReadOnly] public ComponentLookup<PlayerBase> PlayerBaseLookup;
 
+        /// <summary>
+        /// This spawner's barracks level. A spawner with no BuildingData behaves as level zero
+        /// rather than refusing to spawn — a missing building should cost an upgrade, not a lane.
+        /// </summary>
+        [ReadOnly] public ComponentLookup<BuildingData> BuildingLookup;
+
         /// <summary>Optional. Default (uncreated) means "fall back to the baked roster".</summary>
         [ReadOnly] public BlobAssetReference<RaceCatalogBlob> RaceCatalog;
 
@@ -80,20 +89,29 @@ namespace FourCorners.Scripts.Systems.Spawner
             RefRO<LocalToWorld> worldTransform,
             DynamicBuffer<SpawnerPrefab> prefabs)
         {
+            // Tested against the authored values, so a spawner deliberately authored as disabled
+            // stays disabled no matter what level it reaches.
             if (spawner.SpawnInterval <= 0f || spawner.SpawnAmount <= 0) return;
 
             // Authority check: read IsActive from the owning PlayerBase.
             if (!PlayerBaseLookup.TryGetComponent(spawner.PlayerBaseEntity, out var owningBase) || !owningBase.IsActive)
                 return;
 
-            spawner.Timer += DeltaTime;
-            if (spawner.Timer < spawner.SpawnInterval) return;
+            // Derived per tick from the barracks level; SpawnerData keeps the authored baseline
+            // untouched, so the inspector values still mean what they say and resetting a corner
+            // for a new occupant is one assignment rather than a restore from a saved copy.
+            int level = BuildingLookup.TryGetComponent(entity, out var barracks) ? barracks.Level : 0;
+            float interval = BuildingUpgrade.EffectiveSpawnInterval(spawner.SpawnInterval, level);
+            int amount = BuildingUpgrade.EffectiveSpawnAmount(spawner.SpawnAmount, level);
 
-            spawner.Timer -= spawner.SpawnInterval;
+            spawner.Timer += DeltaTime;
+            if (spawner.Timer < interval) return;
+
+            spawner.Timer -= interval;
 
             var random = Unity.Mathematics.Random.CreateFromIndex(Seed ^ (uint)sortKey);
 
-            for (int i = 0; i < spawner.SpawnAmount; i++)
+            for (int i = 0; i < amount; i++)
             {
                 if (!TryPickModel(owningBase.Race, prefabs, ref random, out var selectedType)) return;
 

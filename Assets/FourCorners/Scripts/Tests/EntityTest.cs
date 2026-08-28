@@ -1,6 +1,8 @@
+using FourCorners.Scripts.Components.Building;
 using FourCorners.Scripts.Components.Combat;
 using FourCorners.Scripts.Components.Command;
 using FourCorners.Scripts.Components.Connection;
+using FourCorners.Scripts.Components.Economy;
 using FourCorners.Scripts.Components.Minion;
 using FourCorners.Scripts.Components.Request;
 using FourCorners.Scripts.Components.Spawner;
@@ -165,6 +167,76 @@ namespace FourCorners.Scripts.Tests
         }
 
         /// <summary>
+        /// A corner base with a purse, as PlayerBaseAuthoring bakes it.
+        ///
+        /// The economy lives on the base rather than the connection so it survives a disconnect —
+        /// anything testing it has to build that shape or it is testing something else.
+        /// </summary>
+        public static Entity CreateTestPlayerBaseWithEconomy(
+            EntityManager entityManager,
+            TeamNumber team,
+            int gold = 0,
+            int incomePerSecond = 0,
+            bool isActive = true)
+        {
+            var entity = CreateTestPlayerBase(entityManager, team, isActive);
+
+            entityManager.AddComponentData(entity, new PlayerEconomy
+            {
+                Gold = gold,
+                StartingGold = gold,
+                IncomePerSecond = incomePerSecond,
+
+                // The baseline, not the effective rate: IncomeSystem derives IncomePerSecond from
+                // this and the central building's level every tick. A factory that set only the
+                // former would produce a base that silently earns nothing.
+                BaseIncomePerSecond = incomePerSecond
+            });
+
+            entityManager.AddComponentData(entity, new BuildingData
+            {
+                Type = BuildingType.Central,
+                Level = 0
+            });
+
+            return entity;
+        }
+
+        /// <summary>An accepted, already-authenticated command intent, as the dispatcher emits it.</summary>
+        public static Entity CreateBaseCommand(
+            EntityManager entityManager,
+            Entity baseEntity,
+            TeamNumber team,
+            BaseCommandType type,
+            byte targetSlot = 0,
+            Entity sourceConnection = default)
+        {
+            var entity = entityManager.CreateEntity(typeof(BaseCommand));
+            entityManager.SetComponentData(entity, new BaseCommand
+            {
+                BaseEntity = baseEntity,
+                Team = team,
+                Type = type,
+                TargetSlot = targetSlot,
+                SourceConnection = sourceConnection
+            });
+            return entity;
+        }
+
+        /// <summary>Records a kill for BountySystem to pay out.</summary>
+        public static Entity CreateKillEvent(
+            EntityManager entityManager, TeamNumber killerTeam, TeamNumber victimTeam)
+        {
+            var entity = entityManager.CreateEntity(typeof(KillEvent));
+            entityManager.SetComponentData(entity, new KillEvent
+            {
+                KillerTeam = killerTeam,
+                VictimTeam = victimTeam
+            });
+            return entity;
+        }
+
+        /// <summary>
         /// Creates a spawner owned by <paramref name="playerBaseEntity"/>.
         ///
         /// LocalToWorld, not LocalTransform: SpawnerJob queries RefRO&lt;LocalToWorld&gt;. Getting
@@ -174,7 +246,8 @@ namespace FourCorners.Scripts.Tests
             EntityManager entityManager,
             Entity playerBaseEntity,
             float spawnInterval,
-            float timer)
+            float timer,
+            int slot = 0)
         {
             var entity = entityManager.CreateEntity(
                 typeof(SpawnerData),
@@ -188,7 +261,17 @@ namespace FourCorners.Scripts.Tests
                 SpawnInterval = spawnInterval,
                 Timer = timer,
                 IsActive = true,
-                SpawnAmount = 1
+                SpawnAmount = 1,
+                LaneIndex = slot
+            });
+
+            // A spawner is a barracks. SpawnerSystem derives its effective wave size and interval
+            // from this level, so its absence would quietly mean "level zero" rather than fail.
+            entityManager.AddComponentData(entity, new BuildingData
+            {
+                Type = BuildingType.Barracks,
+                Slot = (byte)slot,
+                Level = 0
             });
 
             entityManager.SetComponentData(entity, new LocalToWorld { Value = float4x4.identity });
